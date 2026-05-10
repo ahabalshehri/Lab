@@ -23,6 +23,7 @@
       </div>
     </div>
     <div class="top-actions">
+      <button class="ghost-button" id="exportButton" type="button">Export Delays CSV</button>
       <button class="ghost-button" id="printButton" type="button">Print</button>
       <button class="ghost-button" id="sampleButton" type="button">Sample Data</button>
       <label class="primary-button file-button">
@@ -65,13 +66,25 @@
       <span>Needed timestamps: doctor order, sample collection, lab received, verified/released result.</span>
     </section>
 
+    <section class="executive-card">
+      <div>
+        <p class="eyebrow">Executive interpretation</p>
+        <h2 id="executiveTitle">Awaiting ER data</h2>
+        <p id="executiveSummary">Upload the ER Excel file to identify whether the main delay is before collection, during transport/receiving, or inside laboratory processing and verification.</p>
+      </div>
+      <div class="target-box">
+        <span>ER TAT Target</span>
+        <strong>&lt;= 60 min</strong>
+      </div>
+    </section>
+
     <section class="kpi-grid" aria-label="ER TAT summary">
-      <article class="kpi-card">
+      <article class="kpi-card accent">
         <span>Total ER records</span>
         <strong id="totalSamples">0</strong>
         <small>After filters</small>
       </article>
-      <article class="kpi-card">
+      <article class="kpi-card success">
         <span>Within 60 minutes</span>
         <strong id="overallCompliance">--%</strong>
         <small>Doctor order to verified result</small>
@@ -85,6 +98,26 @@
         <span>Over 60 minutes</span>
         <strong id="lateSamples">0</strong>
         <small>Delayed ER records</small>
+      </article>
+      <article class="kpi-card">
+        <span>Median total TAT</span>
+        <strong id="medianTat">--</strong>
+        <small>Typical performance</small>
+      </article>
+      <article class="kpi-card">
+        <span>P90 total TAT</span>
+        <strong id="p90Tat">--</strong>
+        <small>Tail delay pressure</small>
+      </article>
+      <article class="kpi-card warning">
+        <span>Missing timestamps</span>
+        <strong id="missingSamples">0</strong>
+        <small>Data quality risk</small>
+      </article>
+      <article class="kpi-card">
+        <span>Worst interval</span>
+        <strong id="worstInterval">--</strong>
+        <small>Largest average interval</small>
       </article>
     </section>
 
@@ -149,7 +182,7 @@
       </div>
     </section>
 
-    <section class="grid-two">
+    <section class="grid-two balanced">
       <article class="panel">
         <div class="panel-header">
           <h2>Weakness by Order Hour</h2>
@@ -173,6 +206,28 @@
 
       <article class="panel">
         <div class="panel-header">
+          <h2>Weakness by Shift</h2>
+          <span id="shiftCount">0 shifts</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Shift</th>
+                <th>Records</th>
+                <th>Compliance</th>
+                <th>Avg TAT</th>
+                <th>Main weakness</th>
+              </tr>
+            </thead>
+            <tbody id="shiftRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header">
           <h2>Weakness by Test</h2>
           <span id="testCount">0 tests</span>
         </div>
@@ -190,7 +245,6 @@
             <tbody id="testRows"></tbody>
           </table>
         </div>
-      </article>
     </section>
 
     <section class="panel">

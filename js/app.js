@@ -30,6 +30,7 @@ let records = [];
 
 const elements = {
   fileInput: document.getElementById("fileInput"),
+  exportButton: document.getElementById("exportButton"),
   sampleButton: document.getElementById("sampleButton"),
   printButton: document.getElementById("printButton"),
   fromDate: document.getElementById("fromDate"),
@@ -39,9 +40,15 @@ const elements = {
   resetFiltersButton: document.getElementById("resetFiltersButton"),
   uploadNotice: document.getElementById("uploadNotice"),
   totalSamples: document.getElementById("totalSamples"),
+  executiveTitle: document.getElementById("executiveTitle"),
+  executiveSummary: document.getElementById("executiveSummary"),
   overallCompliance: document.getElementById("overallCompliance"),
   avgTat: document.getElementById("avgTat"),
   lateSamples: document.getElementById("lateSamples"),
+  medianTat: document.getElementById("medianTat"),
+  p90Tat: document.getElementById("p90Tat"),
+  missingSamples: document.getElementById("missingSamples"),
+  worstInterval: document.getElementById("worstInterval"),
   stage1Compliance: document.getElementById("stage1Compliance"),
   stage2Compliance: document.getElementById("stage2Compliance"),
   stage3Compliance: document.getElementById("stage3Compliance"),
@@ -53,6 +60,8 @@ const elements = {
   intervalRows: document.getElementById("intervalRows"),
   hourCount: document.getElementById("hourCount"),
   hourRows: document.getElementById("hourRows"),
+  shiftCount: document.getElementById("shiftCount"),
+  shiftRows: document.getElementById("shiftRows"),
   testCount: document.getElementById("testCount"),
   testRows: document.getElementById("testRows"),
   workflowCount: document.getElementById("workflowCount"),
@@ -60,6 +69,7 @@ const elements = {
 };
 
 elements.fileInput.addEventListener("change", handleFileUpload);
+elements.exportButton.addEventListener("click", exportDelayedCsv);
 elements.sampleButton.addEventListener("click", loadSampleData);
 elements.printButton.addEventListener("click", () => window.print());
 elements.fromDate.addEventListener("change", render);
@@ -212,10 +222,12 @@ function mainWeakness(values) {
 function render() {
   const data = filteredRecords();
   renderKpis(data);
+  renderExecutiveSummary(data);
   renderStages(data);
   renderInsights(data);
   renderIntervals(data);
   renderHours(data);
+  renderShifts(data);
   renderTests(data);
   renderWorkflow(data);
 }
@@ -238,10 +250,41 @@ function filteredRecords() {
 
 function renderKpis(data) {
   const complete = data.filter((record) => record.status !== "incomplete");
+  const totals = complete.map((record) => record.total).filter(Number.isFinite);
+  const worst = worstInterval(complete);
   elements.totalSamples.textContent = data.length.toLocaleString("en");
   elements.overallCompliance.textContent = percent(count(complete, (record) => record.status === "ok"), complete.length);
-  elements.avgTat.textContent = formatMinutes(avg(complete.map((record) => record.total)));
+  elements.avgTat.textContent = formatMinutes(avg(totals));
   elements.lateSamples.textContent = count(data, (record) => record.status === "late").toLocaleString("en");
+  elements.medianTat.textContent = formatMinutes(median(totals));
+  elements.p90Tat.textContent = formatMinutes(percentile(totals, 90));
+  elements.missingSamples.textContent = count(data, (record) => record.status === "incomplete").toLocaleString("en");
+  elements.worstInterval.textContent = worst ? worst.shortLabel.replace(" / ", " /") : "--";
+}
+
+function renderExecutiveSummary(data) {
+  const complete = data.filter((record) => record.status !== "incomplete");
+  const delayed = complete.filter((record) => record.status === "late");
+  if (!data.length) {
+    elements.executiveTitle.textContent = "Awaiting ER data";
+    elements.executiveSummary.textContent = "Upload the ER Excel file to identify whether the main delay is before collection, during transport/receiving, or inside laboratory processing and verification.";
+    return;
+  }
+
+  const compliance = complianceValue(data);
+  const totalAvg = avg(complete.map((record) => record.total));
+  const weakness = topWeakness(delayed) || "No dominant delay";
+  const worst = worstInterval(complete);
+  const missing = count(data, (record) => record.status === "incomplete");
+  const grade = compliance >= 90 ? "Strong ER TAT control" : compliance >= 75 ? "Moderate ER TAT control" : "ER TAT requires focused intervention";
+
+  elements.executiveTitle.textContent = `${grade}: ${compliance.toFixed(1)}% within 60 minutes`;
+  elements.executiveSummary.textContent = [
+    `${complete.length.toLocaleString("en")} complete records were analyzed with an average total TAT of ${formatMinutes(totalAvg)}.`,
+    `${delayed.length.toLocaleString("en")} records exceeded the 60-minute target; the leading weakness is ${weakness}.`,
+    worst ? `The largest average interval is ${worst.label} at ${formatMinutes(worst.avg)}.` : "",
+    missing ? `${missing.toLocaleString("en")} records have missing timestamps and should be cleaned before final reporting.` : "Timestamp completeness is acceptable for the filtered data.",
+  ].filter(Boolean).join(" ");
 }
 
 function renderStages(data) {
@@ -304,6 +347,17 @@ function renderHours(data) {
 
   elements.hourCount.textContent = `${Object.keys(groups).length.toLocaleString("en")} hours`;
   elements.hourRows.innerHTML = rows.join("") || emptyRow(5, "No hourly data");
+}
+
+function renderShifts(data) {
+  const groups = groupBy(data.filter((record) => record.doctorOrderTime), (record) => shiftLabel(record.doctorOrderTime));
+  const order = ["Night 00:00-07:59", "Morning 08:00-15:59", "Evening 16:00-23:59"];
+  const rows = Object.entries(groups)
+    .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
+    .map(([shift, items]) => summaryRow(shift, items));
+
+  elements.shiftCount.textContent = `${Object.keys(groups).length.toLocaleString("en")} shifts`;
+  elements.shiftRows.innerHTML = rows.join("") || emptyRow(5, "No shift data");
 }
 
 function renderTests(data) {
@@ -410,6 +464,50 @@ function loadSampleData() {
   render();
 }
 
+function exportDelayedCsv() {
+  const delayed = filteredRecords().filter((record) => record.status === "late");
+  if (!delayed.length) {
+    alert("No delayed records to export for the current filters.");
+    return;
+  }
+
+  const headers = [
+    "id",
+    "test_name",
+    "doctor_order_time",
+    "collection_time",
+    "lab_received_time",
+    "verified_time",
+    "stage1_minutes",
+    "stage2_minutes",
+    "stage3_minutes",
+    "total_tat_minutes",
+    "main_weakness",
+  ];
+  const rows = delayed.map((record) => [
+    record.id,
+    record.testName,
+    isoValue(record.doctorOrderTime),
+    isoValue(record.collectionTime),
+    isoValue(record.labReceivedTime),
+    isoValue(record.verifiedTime),
+    numericValue(record.stage1),
+    numericValue(record.stage2),
+    numericValue(record.stage3),
+    numericValue(record.total),
+    record.weakness,
+  ]);
+
+  const csv = [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `er-delayed-records-${toInputDate(new Date())}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function parseDate(value) {
   if (!value) return null;
   if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
@@ -449,6 +547,16 @@ function median(values) {
   return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
 }
 
+function percentile(values, percentileValue) {
+  const nums = values.filter(Number.isFinite).sort((a, b) => a - b);
+  if (!nums.length) return null;
+  const index = (percentileValue / 100) * (nums.length - 1);
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  if (lower === upper) return nums[lower];
+  return nums[lower] + (nums[upper] - nums[lower]) * (index - lower);
+}
+
 function max(values) {
   const nums = values.filter(Number.isFinite);
   return nums.length ? Math.max(...nums) : null;
@@ -477,6 +585,14 @@ function complianceColor(value) {
   if (value >= 90) return "var(--green)";
   if (value >= 75) return "var(--amber)";
   return "var(--red)";
+}
+
+function worstInterval(items) {
+  const ranked = INTERVALS.map((interval) => ({
+    ...interval,
+    avg: avg(items.map((record) => record[interval.key])),
+  })).filter((interval) => Number.isFinite(interval.avg)).sort((a, b) => b.avg - a.avg);
+  return ranked[0] || null;
 }
 
 function formatMinutes(value) {
@@ -541,6 +657,27 @@ function rankedGroup(items, keyFn, mode) {
 function hourLabel(date) {
   if (!date) return "Unknown";
   return `${String(date.getHours()).padStart(2, "0")}:00`;
+}
+
+function shiftLabel(date) {
+  if (!date) return "Unknown";
+  const hour = date.getHours();
+  if (hour < 8) return "Night 00:00-07:59";
+  if (hour < 16) return "Morning 08:00-15:59";
+  return "Evening 16:00-23:59";
+}
+
+function isoValue(value) {
+  return value ? value.toISOString() : "";
+}
+
+function numericValue(value) {
+  return Number.isFinite(value) ? value.toFixed(1) : "";
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
 }
 
 function toInputDate(date) {
