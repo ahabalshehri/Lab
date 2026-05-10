@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1020">
-  <title>Laboratory And Blood Bank | مؤشرات المختبر وبنك الدم</title>
+  <title>ER Laboratory TAT Weakness Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700;800;900&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
   <script src="js/app.js" defer></script>
@@ -15,18 +15,18 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <div class="brand-mark">LAB</div>
+      <div class="brand-mark">ER</div>
       <div>
         <p class="eyebrow">Laboratory And Blood Bank</p>
-        <h1>لوحة مؤشرات المختبر وبنك الدم</h1>
-        <p class="subhead">متابعة سير العمل، التقارير الأسبوعية، ومؤشرات زمن الإنجاز TAT</p>
+        <h1>ER Laboratory TAT Weakness Dashboard</h1>
+        <p class="subhead">Doctor order to verified result target: 60 minutes</p>
       </div>
     </div>
     <div class="top-actions">
-      <button class="ghost-button" id="printButton" type="button">طباعة</button>
-      <button class="ghost-button" id="sampleButton" type="button">بيانات تجريبية</button>
+      <button class="ghost-button" id="printButton" type="button">Print</button>
+      <button class="ghost-button" id="sampleButton" type="button">Sample Data</button>
       <label class="primary-button file-button">
-        رفع Excel
+        Upload Excel
         <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
       </label>
     </div>
@@ -35,134 +35,181 @@
   <main class="shell">
     <section class="toolbar">
       <div class="field">
-        <label for="fromDate">من تاريخ</label>
+        <label for="fromDate">From date</label>
         <input id="fromDate" type="date">
       </div>
       <div class="field">
-        <label for="toDate">إلى تاريخ</label>
+        <label for="toDate">To date</label>
         <input id="toDate" type="date">
       </div>
       <div class="field">
-        <label for="hospitalFilter">المستشفى</label>
-        <select id="hospitalFilter">
-          <option value="">كل المستشفيات</option>
+        <label for="testFilter">Test</label>
+        <select id="testFilter">
+          <option value="">All tests</option>
         </select>
       </div>
       <div class="field">
-        <label for="statusFilter">حالة SLA</label>
+        <label for="statusFilter">SLA status</label>
         <select id="statusFilter">
-          <option value="">كل الحالات</option>
-          <option value="ok">ضمن المستهدف</option>
-          <option value="late">متأخر</option>
-          <option value="incomplete">بيانات ناقصة</option>
+          <option value="">All statuses</option>
+          <option value="ok">Within 60 min</option>
+          <option value="late">Over 60 min</option>
+          <option value="incomplete">Missing timestamps</option>
         </select>
       </div>
-      <button class="secondary-button" id="resetFiltersButton" type="button">إعادة ضبط</button>
+      <button class="secondary-button" id="resetFiltersButton" type="button">Reset</button>
     </section>
 
     <section class="notice" id="uploadNotice">
-      <strong>ابدأ برفع ملف Excel أو استخدم البيانات التجريبية.</strong>
-      <span>الأعمدة المقترحة: hospital, sample_id, test_name, order_time, collection_time, lab_received_time, result_time, department, priority.</span>
+      <strong>Upload an ER Excel file or load sample data.</strong>
+      <span>Needed timestamps: doctor order, sample collection, lab received, verified/released result.</span>
     </section>
 
-    <section class="kpi-grid" aria-label="مؤشرات عامة">
+    <section class="kpi-grid" aria-label="ER TAT summary">
       <article class="kpi-card">
-        <span>إجمالي العينات</span>
+        <span>Total ER records</span>
         <strong id="totalSamples">0</strong>
-        <small>بعد تطبيق الفلاتر</small>
+        <small>After filters</small>
       </article>
       <article class="kpi-card">
-        <span>الالتزام الكلي</span>
+        <span>Within 60 minutes</span>
         <strong id="overallCompliance">--%</strong>
-        <small>الهدف: ≤ 60 دقيقة</small>
+        <small>Doctor order to verified result</small>
       </article>
       <article class="kpi-card">
-        <span>متوسط TAT</span>
+        <span>Average total TAT</span>
         <strong id="avgTat">--</strong>
-        <small>من الطلب إلى ظهور النتيجة</small>
+        <small>Minutes</small>
       </article>
       <article class="kpi-card danger">
-        <span>عينات متأخرة</span>
+        <span>Over 60 minutes</span>
         <strong id="lateSamples">0</strong>
-        <small>خارج المستهدف</small>
+        <small>Delayed ER records</small>
       </article>
     </section>
 
     <section class="grid-two">
       <article class="panel">
         <div class="panel-header">
-          <h2>مؤشرات مراحل TAT</h2>
+          <h2>Interval Performance</h2>
+          <span>Targets: 10 + 10 + 40 = 60 min</span>
         </div>
         <div class="stage-grid">
           <div class="stage-card">
             <b>1</b>
-            <h3>من الطلب إلى سحب العينة</h3>
-            <p>المستهدف ≤ 10 دقائق</p>
+            <h3>Doctor Order to Sample Collection</h3>
+            <p>Target <= 10 min</p>
             <strong id="stage1Compliance">--%</strong>
-            <span id="stage1Avg">متوسط -- د</span>
+            <span id="stage1Avg">Average --</span>
           </div>
           <div class="stage-card">
             <b>2</b>
-            <h3>من السحب إلى استقبال المختبر</h3>
-            <p>المستهدف ≤ 10 دقائق</p>
+            <h3>Sample Collection to Lab Received</h3>
+            <p>Target <= 10 min</p>
             <strong id="stage2Compliance">--%</strong>
-            <span id="stage2Avg">متوسط -- د</span>
+            <span id="stage2Avg">Average --</span>
           </div>
           <div class="stage-card">
             <b>3</b>
-            <h3>من استقبال المختبر إلى النتيجة</h3>
-            <p>المستهدف ≤ 40 دقيقة</p>
+            <h3>Lab Received to Verified Result</h3>
+            <p>Target <= 40 min</p>
             <strong id="stage3Compliance">--%</strong>
-            <span id="stage3Avg">متوسط -- د</span>
+            <span id="stage3Avg">Average --</span>
           </div>
         </div>
       </article>
 
       <article class="panel">
         <div class="panel-header">
-          <h2>التقرير الأسبوعي</h2>
+          <h2>Strength and Weakness</h2>
         </div>
-        <div class="weekly-list" id="weeklyList"></div>
+        <div class="insight-list" id="insightList"></div>
       </article>
     </section>
 
     <section class="panel">
       <div class="panel-header">
-        <h2>مقارنة المستشفيات</h2>
-        <span id="hospitalCount">0 مستشفى</span>
+        <h2>Weakness by Interval</h2>
+        <span id="intervalCount">0 intervals</span>
       </div>
-      <div class="comparison-table-wrap">
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>المستشفى</th>
-              <th>عدد العينات</th>
-              <th>الالتزام الكلي</th>
-              <th>متوسط TAT</th>
-              <th>المتأخر</th>
+              <th>Interval</th>
+              <th>Average</th>
+              <th>Median</th>
+              <th>Max</th>
+              <th>Main cause in delayed records</th>
+              <th>Compliance</th>
             </tr>
           </thead>
-          <tbody id="comparisonRows"></tbody>
+          <tbody id="intervalRows"></tbody>
         </table>
       </div>
     </section>
 
+    <section class="grid-two">
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Weakness by Order Hour</h2>
+          <span id="hourCount">0 hours</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Hour</th>
+                <th>Records</th>
+                <th>Compliance</th>
+                <th>Avg TAT</th>
+                <th>Main weakness</th>
+              </tr>
+            </thead>
+            <tbody id="hourRows"></tbody>
+          </table>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-header">
+          <h2>Weakness by Test</h2>
+          <span id="testCount">0 tests</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Test</th>
+                <th>Records</th>
+                <th>Compliance</th>
+                <th>Avg TAT</th>
+                <th>Main weakness</th>
+              </tr>
+            </thead>
+            <tbody id="testRows"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
     <section class="panel">
       <div class="panel-header">
-        <h2>مراقبة سير العمل</h2>
-        <span id="workflowCount">0 عينة</span>
+        <h2>Delayed ER Records</h2>
+        <span id="workflowCount">0 records</span>
       </div>
-      <div class="workflow-table-wrap">
+      <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>العينة</th>
-              <th>المستشفى</th>
-              <th>الفحص</th>
-              <th>القسم</th>
-              <th>الأولوية</th>
-              <th>المرحلة الحالية</th>
-              <th>TAT</th>
+              <th>Order / Sample ID</th>
+              <th>Test</th>
+              <th>Doctor order</th>
+              <th>Collection</th>
+              <th>Lab received</th>
+              <th>Verified</th>
+              <th>Total TAT</th>
+              <th>Main weakness</th>
               <th>SLA</th>
             </tr>
           </thead>

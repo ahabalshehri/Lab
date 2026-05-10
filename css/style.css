@@ -22,7 +22,7 @@ body {
   min-width: 320px;
   background: var(--bg);
   color: var(--text);
-  font-family: "Tajawal", Arial, sans-serif;
+  font-family: "Inter", Arial, sans-serif;
 }
 
 button,
@@ -292,15 +292,16 @@ select {
   font-size: 28px;
 }
 
-.weekly-list {
+.weekly-list,
+.insight-list {
   display: grid;
   gap: 8px;
   padding: 16px;
 }
 
-.weekly-item {
+.weekly-item,
+.insight-item {
   display: grid;
-  grid-template-columns: 1fr auto;
   gap: 8px;
   padding: 10px;
   border: 1px solid var(--line);
@@ -308,9 +309,20 @@ select {
   background: #0d1426;
 }
 
-.weekly-item span {
+.weekly-item {
+  grid-template-columns: 1fr auto;
+}
+
+.weekly-item span,
+.insight-item span,
+.insight-item small {
   color: var(--muted);
   font-size: 12px;
+}
+
+.insight-item strong {
+  color: var(--text);
+  font-size: 15px;
 }
 
 table {
@@ -337,7 +349,8 @@ td {
 }
 
 .comparison-table-wrap,
-.workflow-table-wrap {
+.workflow-table-wrap,
+.table-wrap {
   overflow-x: auto;
 }
 
