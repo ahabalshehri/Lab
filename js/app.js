@@ -1,7 +1,7 @@
 const TARGETS = {
   stage1: 10,
   stage2: 10,
-  stage3: 40,
+  stage3: 35,
   total: 60,
 };
 
@@ -278,10 +278,10 @@ function renderExecutiveSummary(data) {
   const missing = count(data, (record) => record.status === "incomplete");
   const grade = compliance >= 90 ? "Strong ER TAT control" : compliance >= 75 ? "Moderate ER TAT control" : "ER TAT requires focused intervention";
 
-  elements.executiveTitle.textContent = `${grade}: ${compliance.toFixed(1)}% within 60 minutes`;
+  elements.executiveTitle.textContent = `${grade}: ${compliance.toFixed(1)}% within ${TARGETS.total} minutes`;
   elements.executiveSummary.textContent = [
     `${complete.length.toLocaleString("en")} complete records were analyzed with an average total TAT of ${formatMinutes(totalAvg)}.`,
-    `${delayed.length.toLocaleString("en")} records exceeded the 60-minute target; the leading weakness is ${weakness}.`,
+    `${delayed.length.toLocaleString("en")} records exceeded the ${TARGETS.total}-minute target; the leading weakness is ${weakness}.`,
     worst ? `The largest average interval is ${worst.label} at ${formatMinutes(worst.avg)}.` : "",
     missing ? `${missing.toLocaleString("en")} records have missing timestamps and should be cleaned before final reporting.` : "Timestamp completeness is acceptable for the filtered data.",
   ].filter(Boolean).join(" ");
@@ -311,10 +311,10 @@ function renderInsights(data) {
   const worstHour = worstGroup(complete, (record) => hourLabel(record.doctorOrderTime));
 
   const rows = [
-    insight("Main weakness", weakness || "--", "Most common main delay among records over 60 minutes"),
+    insight("Main weakness", weakness || "--", `Most common main delay among records over ${TARGETS.total} minutes`),
     insight("Strongest interval", strengths[0] ? `${strengths[0].label} (${formatMinutes(strengths[0].avg)})` : "--", "Lowest average interval"),
-    insight("Best order hour", bestHour || "--", "Highest 60-minute compliance"),
-    insight("Weakest order hour", worstHour || "--", "Lowest 60-minute compliance"),
+    insight("Best order hour", bestHour || "--", `Highest ${TARGETS.total}-minute compliance`),
+    insight("Weakest order hour", worstHour || "--", `Lowest ${TARGETS.total}-minute compliance`),
   ];
 
   elements.insightList.innerHTML = rows.join("");
@@ -614,7 +614,7 @@ function formatDateTime(value) {
 function statusPill(status) {
   const labels = {
     ok: "Within target",
-    late: "Over 60",
+    late: `Over ${TARGETS.total}`,
     incomplete: "Missing data",
   };
   return `<span class="status ${status}">${labels[status] || status}</span>`;
