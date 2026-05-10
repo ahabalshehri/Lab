@@ -325,14 +325,20 @@ function renderIntervals(data) {
   const rows = INTERVALS.map((interval) => {
     const values = data.map((record) => record[interval.key]).filter(Number.isFinite);
     const mainCauseCount = count(delayed, (record) => record.weakness === interval.shortLabel);
-    return `<tr>
-      <td>${escapeHtml(interval.label)}</td>
-      <td class="mono">${formatMinutes(avg(values))}</td>
-      <td class="mono">${formatMinutes(median(values))}</td>
-      <td class="mono">${formatMinutes(max(values))}</td>
-      <td class="mono">${mainCauseCount.toLocaleString("en")}</td>
-      <td>${bar(percentValue(values.filter((value) => value <= interval.target).length, values.length))}</td>
-    </tr>`;
+    const compliance = percentValue(values.filter((value) => value <= interval.target).length, values.length);
+    return analysisCard({
+      title: interval.label,
+      subtitle: `Target <= ${interval.target} min`,
+      value: `${compliance.toFixed(1)}%`,
+      valueLabel: "compliance",
+      meta: [
+        ["Average", formatMinutes(avg(values))],
+        ["Median", formatMinutes(median(values))],
+        ["Max", formatMinutes(max(values))],
+        ["Main cause", mainCauseCount.toLocaleString("en")],
+      ],
+      compliance,
+    });
   });
 
   elements.intervalCount.textContent = `${INTERVALS.length} intervals`;
@@ -343,10 +349,10 @@ function renderHours(data) {
   const groups = groupBy(data.filter((record) => record.doctorOrderTime), (record) => hourLabel(record.doctorOrderTime));
   const rows = Object.entries(groups)
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([hour, items]) => summaryRow(hour, items));
+    .map(([hour, items]) => summaryCard(hour, items));
 
   elements.hourCount.textContent = `${Object.keys(groups).length.toLocaleString("en")} hours`;
-  elements.hourRows.innerHTML = rows.join("") || emptyRow(5, "No hourly data");
+  elements.hourRows.innerHTML = rows.join("") || emptyCard("No hourly data");
 }
 
 function renderShifts(data) {
@@ -354,10 +360,10 @@ function renderShifts(data) {
   const order = ["Night 00:00-07:59", "Morning 08:00-15:59", "Evening 16:00-23:59"];
   const rows = Object.entries(groups)
     .sort(([a], [b]) => order.indexOf(a) - order.indexOf(b))
-    .map(([shift, items]) => summaryRow(shift, items));
+    .map(([shift, items]) => summaryCard(shift, items));
 
   elements.shiftCount.textContent = `${Object.keys(groups).length.toLocaleString("en")} shifts`;
-  elements.shiftRows.innerHTML = rows.join("") || emptyRow(5, "No shift data");
+  elements.shiftRows.innerHTML = rows.join("") || emptyCard("No shift data");
 }
 
 function renderTests(data) {
@@ -365,21 +371,27 @@ function renderTests(data) {
   const rows = Object.entries(groups)
     .sort(([, a], [, b]) => b.length - a.length)
     .slice(0, 20)
-    .map(([test, items]) => summaryRow(test, items));
+    .map(([test, items]) => summaryCard(test, items));
 
   elements.testCount.textContent = `${Object.keys(groups).length.toLocaleString("en")} tests`;
-  elements.testRows.innerHTML = rows.join("") || emptyRow(5, "No test data");
+  elements.testRows.innerHTML = rows.join("") || emptyCard("No test data");
 }
 
-function summaryRow(label, items) {
+function summaryCard(label, items) {
   const complete = items.filter((record) => record.status !== "incomplete");
-  return `<tr>
-    <td>${escapeHtml(label)}</td>
-    <td class="mono">${items.length.toLocaleString("en")}</td>
-    <td>${bar(complianceValue(items))}</td>
-    <td class="mono">${formatMinutes(avg(complete.map((record) => record.total)))}</td>
-    <td>${escapeHtml(topWeakness(complete.filter((record) => record.status === "late")) || "--")}</td>
-  </tr>`;
+  const compliance = complianceValue(items);
+  return analysisCard({
+    title: label,
+    subtitle: `${items.length.toLocaleString("en")} records`,
+    value: `${compliance.toFixed(1)}%`,
+    valueLabel: "within target",
+    meta: [
+      ["Avg TAT", formatMinutes(avg(complete.map((record) => record.total)))],
+      ["Delayed", count(complete, (record) => record.status === "late").toLocaleString("en")],
+      ["Weakness", topWeakness(complete.filter((record) => record.status === "late")) || "--"],
+    ],
+    compliance,
+  });
 }
 
 function renderWorkflow(data) {
@@ -392,20 +404,29 @@ function renderWorkflow(data) {
     })
     .slice(0, 250);
 
-  const rows = delayedFirst.map((record) => `<tr>
-    <td class="mono">${escapeHtml(record.id)}</td>
-    <td>${escapeHtml(record.testName)}</td>
-    <td class="mono">${formatDateTime(record.doctorOrderTime)}</td>
-    <td class="mono">${formatDateTime(record.collectionTime)}</td>
-    <td class="mono">${formatDateTime(record.labReceivedTime)}</td>
-    <td class="mono">${formatDateTime(record.verifiedTime)}</td>
-    <td class="mono">${formatMinutes(record.total)}</td>
-    <td>${escapeHtml(record.weakness)}</td>
-    <td>${statusPill(record.status)}</td>
-  </tr>`);
+  const rows = delayedFirst.map((record) => `<article class="delay-card ${record.status}">
+    <div class="delay-card-head">
+      <div>
+        <strong class="mono">${escapeHtml(record.id)}</strong>
+        <span>${escapeHtml(record.testName)}</span>
+      </div>
+      ${statusPill(record.status)}
+    </div>
+    <div class="delay-tat">
+      <span>Total TAT</span>
+      <strong>${formatMinutes(record.total)}</strong>
+    </div>
+    <div class="delay-meta">
+      <div><span>Doctor order</span><strong class="mono">${formatDateTime(record.doctorOrderTime)}</strong></div>
+      <div><span>Collection</span><strong class="mono">${formatDateTime(record.collectionTime)}</strong></div>
+      <div><span>Lab received</span><strong class="mono">${formatDateTime(record.labReceivedTime)}</strong></div>
+      <div><span>Verified</span><strong class="mono">${formatDateTime(record.verifiedTime)}</strong></div>
+    </div>
+    <div class="weakness-strip">${escapeHtml(record.weakness)}</div>
+  </article>`);
 
   elements.workflowCount.textContent = `${data.length.toLocaleString("en")} records`;
-  elements.workflowRows.innerHTML = rows.join("") || emptyRow(9, "No ER records");
+  elements.workflowRows.innerHTML = rows.join("") || emptyCard("No ER records");
 }
 
 function updateTestOptions() {
@@ -695,6 +716,31 @@ function bar(value) {
   </div>`;
 }
 
+function analysisCard({ title, subtitle, value, valueLabel, meta, compliance }) {
+  return `<article class="analysis-card ${scoreClass(compliance)}">
+    <div class="analysis-card-head">
+      <div>
+        <h3>${escapeHtml(title)}</h3>
+        <span>${escapeHtml(subtitle)}</span>
+      </div>
+      <div class="score">
+        <strong>${escapeHtml(value)}</strong>
+        <span>${escapeHtml(valueLabel)}</span>
+      </div>
+    </div>
+    ${bar(compliance)}
+    <div class="analysis-meta">
+      ${meta.map(([label, itemValue]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(itemValue)}</strong></div>`).join("")}
+    </div>
+  </article>`;
+}
+
+function scoreClass(value) {
+  if (value >= 90) return "good";
+  if (value >= 75) return "watch";
+  return "risk";
+}
+
 function insight(title, value, detail) {
   return `<div class="insight-item">
     <span>${escapeHtml(title)}</span>
@@ -703,8 +749,8 @@ function insight(title, value, detail) {
   </div>`;
 }
 
-function emptyRow(colspan, text) {
-  return `<tr><td colspan="${colspan}" style="text-align:center;color:var(--muted);padding:28px">${escapeHtml(text)}</td></tr>`;
+function emptyCard(text) {
+  return `<div class="empty-card">${escapeHtml(text)}</div>`;
 }
 
 function escapeHtml(value) {

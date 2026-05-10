@@ -165,21 +165,7 @@
         <h2>Weakness by Interval</h2>
         <span id="intervalCount">0 intervals</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Interval</th>
-              <th>Average</th>
-              <th>Median</th>
-              <th>Max</th>
-              <th>Main cause in delayed records</th>
-              <th>Compliance</th>
-            </tr>
-          </thead>
-          <tbody id="intervalRows"></tbody>
-        </table>
-      </div>
+      <div class="analysis-card-grid interval-card-grid" id="intervalRows"></div>
     </section>
 
     <section class="grid-two balanced">
@@ -188,20 +174,7 @@
           <h2>Weakness by Order Hour</h2>
           <span id="hourCount">0 hours</span>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Hour</th>
-                <th>Records</th>
-                <th>Compliance</th>
-                <th>Avg TAT</th>
-                <th>Main weakness</th>
-              </tr>
-            </thead>
-            <tbody id="hourRows"></tbody>
-          </table>
-        </div>
+        <div class="analysis-card-list" id="hourRows"></div>
       </article>
 
       <article class="panel">
@@ -209,20 +182,7 @@
           <h2>Weakness by Shift</h2>
           <span id="shiftCount">0 shifts</span>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Shift</th>
-                <th>Records</th>
-                <th>Compliance</th>
-                <th>Avg TAT</th>
-                <th>Main weakness</th>
-              </tr>
-            </thead>
-            <tbody id="shiftRows"></tbody>
-          </table>
-        </div>
+        <div class="analysis-card-list" id="shiftRows"></div>
       </article>
     </section>
 
@@ -231,20 +191,7 @@
           <h2>Weakness by Test</h2>
           <span id="testCount">0 tests</span>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Test</th>
-                <th>Records</th>
-                <th>Compliance</th>
-                <th>Avg TAT</th>
-                <th>Main weakness</th>
-              </tr>
-            </thead>
-            <tbody id="testRows"></tbody>
-          </table>
-        </div>
+        <div class="analysis-card-grid" id="testRows"></div>
     </section>
 
     <section class="panel">
@@ -252,24 +199,7 @@
         <h2>Delayed ER Records</h2>
         <span id="workflowCount">0 records</span>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Order / Sample ID</th>
-              <th>Test</th>
-              <th>Doctor order</th>
-              <th>Collection</th>
-              <th>Lab received</th>
-              <th>Verified</th>
-              <th>Total TAT</th>
-              <th>Main weakness</th>
-              <th>SLA</th>
-            </tr>
-          </thead>
-          <tbody id="workflowRows"></tbody>
-        </table>
-      </div>
+      <div class="delay-card-grid" id="workflowRows"></div>
     </section>
   </main>
 </body>
