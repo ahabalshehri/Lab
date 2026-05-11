@@ -1,206 +1,914 @@
-<!doctype html>
-<html lang="en" dir="ltr">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b1020">
-  <title>ER Laboratory TAT Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
-  <script src="js/app.js" defer></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1623">
+<title>ER Laboratory TAT Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0f1623;
+  --bg2: #161e2e;
+  --bg3: #1d2840;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #e8edf5;
+  --muted: #6b7a99;
+  --accent: #3b82f6;
+  --accent2: #06b6d4;
+  --green: #10b981;
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --radius: 12px;
+  --radius-sm: 8px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+/* ── HEADER ── */
+header {
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 60px; position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.logo-text { font-size: 15px; font-weight: 600; color: var(--text); }
+.logo-sub { font-size: 11px; color: var(--muted); }
+.header-actions { display: flex; gap: 8px; align-items: center; }
+.badge-live { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(16,185,129,0.2); }
+.badge-live span { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+/* ── BUTTONS ── */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); transition: all .15s; }
+.btn:hover { background: var(--bg2); border-color: rgba(255,255,255,.2); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: #2563eb; border-color: #2563eb; }
+.btn-green { background: var(--green); border-color: var(--green); color: #fff; }
+.btn-green:hover { background: #059669; }
+.btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+/* ── LAYOUT ── */
+.main { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+.section { margin-bottom: 28px; }
+.section-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* ── UPLOAD ZONE ── */
+.upload-zone {
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius);
+  padding: 40px 24px;
+  text-align: center;
+  transition: all .2s;
+  cursor: pointer;
+  background: var(--bg2);
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(59,130,246,.05); }
+.upload-zone h3 { font-size: 15px; font-weight: 500; margin: 12px 0 6px; }
+.upload-zone p { color: var(--muted); font-size: 13px; }
+.upload-icon { font-size: 36px; display: block; }
+.upload-actions { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+#fileInput { display: none; }
+
+/* ── FILTERS ── */
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.filter-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+select, input[type=date], input[type=text] {
+  background: var(--bg2); border: 1px solid var(--border2); color: var(--text);
+  padding: 7px 11px; border-radius: var(--radius-sm); font-family: var(--font); font-size: 13px;
+  min-width: 140px; outline: none; transition: border-color .15s;
+}
+select:focus, input:focus { border-color: var(--accent); }
+.btn-reset { align-self: flex-end; }
+
+/* ── METRIC CARDS ── */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.metric-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; position: relative; overflow: hidden; transition: border-color .2s; }
+.metric-card:hover { border-color: var(--border2); }
+.metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.metric-card.ok::before { background: var(--green); }
+.metric-card.warn::before { background: var(--amber); }
+.metric-card.bad::before { background: var(--red); }
+.metric-card.info::before { background: var(--accent); }
+.metric-card.purple::before { background: var(--purple); }
+.mc-label { font-size: 11px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.mc-value { font-size: 28px; font-weight: 600; line-height: 1.1; }
+.mc-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.mc-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 2px 7px; border-radius: 20px; margin-top: 6px; font-weight: 500; }
+.mc-badge.ok { background: rgba(16,185,129,.15); color: var(--green); }
+.mc-badge.warn { background: rgba(245,158,11,.15); color: var(--amber); }
+.mc-badge.bad { background: rgba(239,68,68,.15); color: var(--red); }
+
+/* ── INTERVAL CARDS ── */
+.intervals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 640px) { .intervals-grid { grid-template-columns: 1fr; } }
+.interval-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.interval-num { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.interval-name { font-size: 14px; font-weight: 500; margin: 6px 0 4px; }
+.interval-target { font-size: 11px; color: var(--muted); }
+.interval-avg { font-size: 26px; font-weight: 600; margin: 10px 0 6px; }
+.progress-bar { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width .6s ease; }
+
+/* ── CHARTS ── */
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 768px) { .charts-grid { grid-template-columns: 1fr; } }
+.chart-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.chart-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.chart-sub { font-size: 11px; color: var(--muted); margin-bottom: 14px; }
+.chart-wrap { position: relative; }
+
+/* ── AI PANEL ── */
+.ai-panel { background: linear-gradient(135deg, rgba(59,130,246,.08), rgba(139,92,246,.08)); border: 1px solid rgba(59,130,246,.2); border-radius: var(--radius); padding: 20px; }
+.ai-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.ai-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--purple)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.ai-title { font-size: 14px; font-weight: 500; }
+.ai-sub { font-size: 11px; color: var(--muted); }
+.ai-body { font-size: 13px; line-height: 1.75; color: #c4cfe0; }
+.ai-body p { margin-bottom: 10px; }
+.ai-body p:last-child { margin-bottom: 0; }
+.ai-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 13px; }
+.ai-dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); animation: dot 1.2s infinite; margin: 0 2px; }
+.ai-dots span:nth-child(2) { animation-delay: .2s; }
+.ai-dots span:nth-child(3) { animation-delay: .4s; }
+@keyframes dot { 0%,80%,100%{transform:scale(0);opacity:.3;} 40%{transform:scale(1);opacity:1;} }
+.ai-error { color: var(--red); font-size: 13px; }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: var(--bg3); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 9px 14px; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 12px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+.td-over { color: var(--red); font-weight: 500; }
+.td-ok { color: var(--green); }
+
+/* ── HEATMAP ── */
+.heatmap-grid { display: grid; grid-template-columns: 40px repeat(24, 1fr); gap: 2px; font-size: 10px; }
+.heatmap-cell { aspect-ratio: 1; border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 9px; color: transparent; transition: color .2s; cursor: default; }
+.heatmap-cell:hover { color: white; }
+.heatmap-label { color: var(--muted); display: flex; align-items: center; font-size: 10px; }
+.heatmap-hour { color: var(--muted); text-align: center; font-size: 9px; }
+
+/* ── WEAKNESSES ── */
+.weakness-list { display: flex; flex-direction: column; gap: 8px; }
+.weakness-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg3); border-radius: var(--radius-sm); font-size: 13px; }
+.weakness-rank { width: 20px; font-size: 11px; color: var(--muted); font-weight: 600; }
+.weakness-name { flex: 1; }
+.weakness-val { font-family: var(--mono); font-size: 12px; }
+.weakness-bar { flex: 2; height: 4px; background: var(--bg2); border-radius: 2px; overflow: hidden; }
+.weakness-fill { height: 100%; border-radius: 2px; background: var(--red); }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; z-index: 999; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.toast.show { display: block; animation: slideUp .2s ease; }
+@keyframes slideUp { from{transform:translateY(10px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+
+/* ── EMPTY STATE ── */
+.empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+.empty-icon { font-size: 40px; display: block; margin-bottom: 12px; }
+.empty h3 { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  header { padding: 0 14px; }
+  .main { padding: 16px 12px; }
+  .metric-card { padding: 12px; }
+  .mc-value { font-size: 22px; }
+  .header-actions .btn span { display: none; }
+}
+
+/* ── PRINT ── */
+@media print {
+  body { background: #fff; color: #000; font-size: 12px; }
+  header { position: static; background: #fff; border-bottom: 1px solid #ddd; }
+  .btn, .upload-zone, .filters, #aiSection { display: none !important; }
+  .metric-card, .chart-card, .interval-card { border: 1px solid #ddd; break-inside: avoid; }
+  .bg2 { background: #f9f9f9 !important; }
+}
+</style>
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-mark">ER</div>
-      <div>
-        <p class="eyebrow">Laboratory And Blood Bank</p>
-        <h1>ER Laboratory TAT Dashboard</h1>
-        <p class="subhead">Doctor order to verified result target: 60 minutes</p>
-      </div>
-    </div>
-    <div class="top-actions">
-      <button class="ghost-button" id="exportButton" type="button">Export Delays CSV</button>
-      <button class="ghost-button" id="printButton" type="button">Print</button>
-      <button class="ghost-button" id="sampleButton" type="button">Sample Data</button>
-      <label class="primary-button file-button">
-        Upload Excel
-        <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" hidden>
-      </label>
-    </div>
-  </header>
 
-  <main class="shell">
-    <section class="toolbar">
-      <div class="field">
-        <label for="fromDate">From date</label>
-        <input id="fromDate" type="date">
+<header>
+  <div class="logo">
+    <div class="logo-icon">🧪</div>
+    <div>
+      <div class="logo-text">ER Laboratory TAT</div>
+      <div class="logo-sub">Turnaround Time Dashboard</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="badge-live" id="liveStatus" style="display:none"><span></span> Data loaded</div>
+    <button class="btn" onclick="window.print()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      <span>Print</span>
+    </button>
+    <button class="btn" onclick="exportCSV()" id="exportBtn" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span>Export CSV</span>
+    </button>
+    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Upload Excel</span>
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- UPLOAD -->
+  <div id="uploadSection" class="section">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <span class="upload-icon">📋</span>
+      <h3>Upload your ER Excel file</h3>
+      <p>Drag & drop or click to browse — .xlsx, .xls, or .csv accepted</p>
+      <p style="margin-top:6px;font-size:12px;color:var(--muted)">Required columns: doctor order time · sample collection · lab received · verified/released result</p>
+      <div class="upload-actions" onclick="e=>e.stopPropagation()">
+        <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+          Upload Excel
+        </button>
+        <button class="btn btn-green" onclick="event.stopPropagation();loadSample()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Load Sample Data
+        </button>
       </div>
-      <div class="field">
-        <label for="toDate">To date</label>
-        <input id="toDate" type="date">
+    </div>
+  </div>
+
+  <!-- FILTERS -->
+  <div id="filterSection" class="section" style="display:none">
+    <div class="section-title">Filters</div>
+    <div class="filters">
+      <div class="filter-group">
+        <div class="filter-label">From date</div>
+        <input type="date" id="filterFrom">
       </div>
-      <div class="field">
-        <label for="testFilter">Test</label>
-        <select id="testFilter">
-          <option value="">All tests</option>
-        </select>
+      <div class="filter-group">
+        <div class="filter-label">To date</div>
+        <input type="date" id="filterTo">
       </div>
-      <div class="field">
-        <label for="statusFilter">SLA status</label>
-        <select id="statusFilter">
+      <div class="filter-group">
+        <div class="filter-label">Test type</div>
+        <select id="filterTest"><option value="">All tests</option></select>
+      </div>
+      <div class="filter-group">
+        <div class="filter-label">SLA status</div>
+        <select id="filterSLA">
           <option value="">All statuses</option>
           <option value="ok">Within 60 min</option>
-          <option value="late">Over 60 min</option>
-          <option value="incomplete">Missing timestamps</option>
+          <option value="over">Over 60 min</option>
+          <option value="missing">Missing timestamps</option>
         </select>
       </div>
-      <button class="secondary-button" id="resetFiltersButton" type="button">Reset</button>
-    </section>
+      <button class="btn btn-reset" onclick="resetFilters()">Reset</button>
+      <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+    </div>
+  </div>
 
-    <section class="notice" id="uploadNotice">
-      <strong>Upload an ER Excel file or load sample data.</strong>
-      <span>Needed timestamps: doctor order, sample collection, lab received, verified/released result.</span>
-    </section>
-
-    <section class="executive-card">
-      <div>
-        <p class="eyebrow">Executive interpretation</p>
-        <h2 id="executiveTitle">Awaiting ER data</h2>
-        <p id="executiveSummary">Upload the ER Excel file to identify whether the main delay is before collection, during transport/receiving, or inside laboratory processing and verification.</p>
+  <!-- KPI METRICS -->
+  <div id="metricsSection" class="section" style="display:none">
+    <div class="section-title">Key metrics</div>
+    <div class="metrics-grid">
+      <div class="metric-card info">
+        <div class="mc-label">Total records</div>
+        <div class="mc-value" id="m-total">0</div>
+        <div class="mc-sub">After filters</div>
       </div>
-      <div class="target-box">
-        <span>ER TAT Target</span>
-        <strong>&lt;= 60 min</strong>
+      <div class="metric-card" id="mc-sla">
+        <div class="mc-label">Within SLA (≤60 min)</div>
+        <div class="mc-value" id="m-sla">--%</div>
+        <div class="mc-sub">Doctor order → verified result</div>
       </div>
-    </section>
-
-    <section class="kpi-grid" aria-label="ER TAT summary">
-      <article class="kpi-card accent">
-        <span>Total ER records</span>
-        <strong id="totalSamples">0</strong>
-        <small>After filters</small>
-      </article>
-      <article class="kpi-card success">
-        <span>Within 60 minutes</span>
-        <strong id="overallCompliance">--%</strong>
-        <small>Doctor order to verified result</small>
-      </article>
-      <article class="kpi-card">
-        <span>Average total TAT</span>
-        <strong id="avgTat">--</strong>
-        <small>Minutes</small>
-      </article>
-      <article class="kpi-card danger">
-        <span>Over 60 minutes</span>
-        <strong id="lateSamples">0</strong>
-        <small>Delayed ER records</small>
-      </article>
-      <article class="kpi-card">
-        <span>Median total TAT</span>
-        <strong id="medianTat">--</strong>
-        <small>Typical performance</small>
-      </article>
-      <article class="kpi-card">
-        <span>P90 total TAT</span>
-        <strong id="p90Tat">--</strong>
-        <small>Tail delay pressure</small>
-      </article>
-      <article class="kpi-card warning">
-        <span>Missing timestamps</span>
-        <strong id="missingSamples">0</strong>
-        <small>Data quality risk</small>
-      </article>
-      <article class="kpi-card">
-        <span>Worst interval</span>
-        <strong id="worstInterval">--</strong>
-        <small>Largest average interval</small>
-      </article>
-    </section>
-
-    <section class="grid-two">
-      <article class="panel">
-        <div class="panel-header">
-          <h2>Interval Performance</h2>
-          <span>Interval targets: 10 + 10 + 35 min. Overall ER TAT target: 60 min</span>
-        </div>
-        <div class="stage-grid">
-          <div class="stage-card">
-            <b>1</b>
-            <h3>Doctor Order to Sample Collection</h3>
-            <p>Target <= 10 min</p>
-            <strong id="stage1Compliance">--%</strong>
-            <span id="stage1Avg">Average --</span>
-          </div>
-          <div class="stage-card">
-            <b>2</b>
-            <h3>Sample Collection to Lab Received</h3>
-            <p>Target <= 10 min</p>
-            <strong id="stage2Compliance">--%</strong>
-            <span id="stage2Avg">Average --</span>
-          </div>
-          <div class="stage-card">
-            <b>3</b>
-            <h3>Lab Received to Verified Result</h3>
-            <p>Target <= 35 min</p>
-            <strong id="stage3Compliance">--%</strong>
-            <span id="stage3Avg">Average --</span>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-header">
-          <h2>Strength and Weakness</h2>
-        </div>
-        <div class="insight-list" id="insightList"></div>
-      </article>
-    </section>
-
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Weakness by Interval</h2>
-        <span id="intervalCount">0 intervals</span>
+      <div class="metric-card" id="mc-avg">
+        <div class="mc-label">Average TAT</div>
+        <div class="mc-value" id="m-avg">-- min</div>
+        <div class="mc-sub">Mean turnaround</div>
       </div>
-      <div class="analysis-card-grid interval-card-grid" id="intervalRows"></div>
-    </section>
-
-    <section class="grid-two balanced">
-      <article class="panel">
-        <div class="panel-header">
-          <h2>Weakness by Order Hour</h2>
-          <span id="hourCount">0 hours</span>
-        </div>
-        <div class="analysis-card-list" id="hourRows"></div>
-      </article>
-
-      <article class="panel">
-        <div class="panel-header">
-          <h2>Weakness by Shift</h2>
-          <span id="shiftCount">0 shifts</span>
-        </div>
-        <div class="analysis-card-list" id="shiftRows"></div>
-      </article>
-    </section>
-
-    <section class="panel">
-        <div class="panel-header">
-          <h2>Weakness by Test</h2>
-          <span id="testCount">0 tests</span>
-        </div>
-        <div class="analysis-card-grid" id="testRows"></div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-header">
-        <h2>Delayed ER Records</h2>
-        <span id="workflowCount">0 records</span>
+      <div class="metric-card" id="mc-med">
+        <div class="mc-label">Median TAT</div>
+        <div class="mc-value" id="m-med">-- min</div>
+        <div class="mc-sub">Typical performance</div>
       </div>
-      <div class="delay-card-grid" id="workflowRows"></div>
-    </section>
-  </main>
+      <div class="metric-card warn">
+        <div class="mc-label">P90 TAT</div>
+        <div class="mc-value" id="m-p90">-- min</div>
+        <div class="mc-sub">Tail delay pressure</div>
+      </div>
+      <div class="metric-card" id="mc-over">
+        <div class="mc-label">Over 60 min</div>
+        <div class="mc-value" id="m-over">0</div>
+        <div class="mc-sub">Delayed records</div>
+      </div>
+      <div class="metric-card purple">
+        <div class="mc-label">Missing timestamps</div>
+        <div class="mc-value" id="m-missing">0</div>
+        <div class="mc-sub">Data quality risk</div>
+      </div>
+      <div class="metric-card" id="mc-worst">
+        <div class="mc-label">Worst interval</div>
+        <div class="mc-value" id="m-worst">--</div>
+        <div class="mc-sub">Largest avg delay</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- INTERVAL PERFORMANCE -->
+  <div id="intervalSection" class="section" style="display:none">
+    <div class="section-title">Interval performance</div>
+    <div class="intervals-grid">
+      <div class="interval-card">
+        <div class="interval-num">Step 1</div>
+        <div class="interval-name">Doctor Order → Sample Collection</div>
+        <div class="interval-target">Target ≤ 10 min</div>
+        <div class="interval-avg" id="i1-avg">-- min</div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span id="i1-pct">--%</span><span>within target</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="i1-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+      <div class="interval-card">
+        <div class="interval-num">Step 2</div>
+        <div class="interval-name">Sample Collection → Lab Received</div>
+        <div class="interval-target">Target ≤ 10 min</div>
+        <div class="interval-avg" id="i2-avg">-- min</div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span id="i2-pct">--%</span><span>within target</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="i2-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+      <div class="interval-card">
+        <div class="interval-num">Step 3</div>
+        <div class="interval-name">Lab Received → Verified Result</div>
+        <div class="interval-target">Target ≤ 35 min</div>
+        <div class="interval-avg" id="i3-avg">-- min</div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span id="i3-pct">--%</span><span>within target</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="i3-bar" style="width:0%;background:var(--green)"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI INTERPRETATION -->
+  <div id="aiSection" class="section" style="display:none">
+    <div class="section-title">AI interpretation</div>
+    <div class="ai-panel">
+      <div class="ai-header">
+        <div class="ai-icon">✦</div>
+        <div>
+          <div class="ai-title">Executive summary</div>
+          <div class="ai-sub">Powered by Claude — auto-generated from your data</div>
+        </div>
+        <button class="btn" style="margin-left:auto" onclick="runAI()" id="aiRefreshBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Regenerate
+        </button>
+      </div>
+      <div class="ai-body" id="aiBody">
+        <div class="ai-loading"><div class="ai-dots"><span></span><span></span><span></span></div> Analyzing your ER data…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS -->
+  <div id="chartsSection" class="section" style="display:none">
+    <div class="section-title">Charts & visualizations</div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">TAT distribution</div>
+        <div class="chart-sub">Histogram of total turnaround times</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chartHist" role="img" aria-label="Histogram of TAT distribution">TAT distribution histogram</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Interval breakdown</div>
+        <div class="chart-sub">Average minutes per step vs. target</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chartInterval" role="img" aria-label="Interval breakdown bar chart">Interval breakdown</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">TAT by hour of day</div>
+        <div class="chart-sub">Average turnaround per hour (all records)</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chartHour" role="img" aria-label="TAT by hour of day">TAT by hour</canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">TAT by shift</div>
+        <div class="chart-sub">Morning · Afternoon · Night shift performance</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chartShift" role="img" aria-label="TAT by shift">TAT by shift</canvas></div>
+      </div>
+      <div class="chart-card" style="grid-column:1/-1">
+        <div class="chart-title">Top delayed tests</div>
+        <div class="chart-sub">Average TAT per test type — red line = 60 min SLA</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="chartTest" role="img" aria-label="TAT by test type">TAT by test</canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEATMAP -->
+  <div id="heatmapSection" class="section" style="display:none">
+    <div class="section-title">Delay heatmap — hour vs. day of week</div>
+    <div class="chart-card">
+      <div class="chart-title">When do delays happen?</div>
+      <div class="chart-sub">Darker = higher average TAT. Hover for exact value.</div>
+      <div id="heatmapGrid" style="margin-top:14px;overflow-x:auto;"></div>
+    </div>
+  </div>
+
+  <!-- WEAKNESS ANALYSIS -->
+  <div id="weaknessSection" class="section" style="display:none">
+    <div class="section-title">Weakness analysis</div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Worst tests by TAT</div>
+        <div class="chart-sub">Top 8 tests with highest average delay</div>
+        <div class="weakness-list" id="weakTest"></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Worst hours of day</div>
+        <div class="chart-sub">Hours with most SLA breaches</div>
+        <div class="weakness-list" id="weakHour"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELAYED RECORDS TABLE -->
+  <div id="tableSection" class="section" style="display:none">
+    <div class="section-title">Delayed records</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Patient / ID</th>
+            <th>Test</th>
+            <th>Order time</th>
+            <th>Step 1</th>
+            <th>Step 2</th>
+            <th>Step 3</th>
+            <th>Total TAT</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="delayedTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let rawData = [], filteredData = [], charts = {};
+
+/* ── HELPERS ── */
+function toMin(ms){ return ms == null ? null : Math.round(ms/60000*10)/10; }
+function parseDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v)?null:v;
+  if(typeof v === 'number') return new Date((v-25569)*86400000);
+  const d = new Date(v); return isNaN(d)?null:d;
+}
+function diffMin(a,b){ if(!a||!b) return null; return Math.round((b-a)/60000*10)/10; }
+function pct(n,d){ return d===0?0:Math.round(n/d*100); }
+function med(arr){ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function p90(arr){ if(!arr.length) return 0; const s=[...arr].sort((a,b)=>a-b); return s[Math.floor(s.length*.9)]||s[s.length-1]; }
+function avg(arr){ return arr.length?arr.reduce((a,b)=>a+b,0)/arr.length:0; }
+function shift(h){ if(h>=7&&h<15) return 'Morning (07–15)'; if(h>=15&&h<23) return 'Afternoon (15–23)'; return 'Night (23–07)'; }
+function showToast(msg, dur=2500){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),dur); }
+function show(id){ document.getElementById(id).style.display=''; }
+function hide(id){ document.getElementById(id).style.display='none'; }
+
+/* ── COLUMN DETECTION ── */
+function detectCol(headers, patterns){
+  for(const p of patterns){
+    const idx = headers.findIndex(h=>h&&p.test(String(h).toLowerCase()));
+    if(idx>=0) return idx;
+  }
+  return -1;
+}
+
+/* ── PARSE EXCEL ── */
+function parseRows(ws){
+  const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+  if(!json.length) return [];
+  const headers = json[0].map(h=>String(h).trim());
+
+  const iOrder   = detectCol(headers,[/order/,/doctor.*order/,/ord.*time/,/physician.*order/,/request/]);
+  const iCollect = detectCol(headers,[/collec/,/draw/,/specimen.*time/,/sample.*time/,/phlebotomy/]);
+  const iReceive = detectCol(headers,[/receiv/,/lab.*receiv/,/arrival/,/accession/]);
+  const iVerify  = detectCol(headers,[/verif/,/result.*time/,/release/,/report.*time/,/complete/]);
+  const iTest    = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/]);
+  const iID      = detectCol(headers,[/patient.*id/,/mrn/,/visit/,/encounter/,/id/,/accession/]);
+
+  const rows = [];
+  for(let i=1;i<json.length;i++){
+    const r = json[i];
+    const tOrder   = parseDate(iOrder>=0?r[iOrder]:null);
+    const tCollect = parseDate(iCollect>=0?r[iCollect]:null);
+    const tReceive = parseDate(iReceive>=0?r[iReceive]:null);
+    const tVerify  = parseDate(iVerify>=0?r[iVerify]:null);
+    if(!tOrder && !tVerify) continue;
+    const s1 = diffMin(tOrder, tCollect);
+    const s2 = diffMin(tCollect, tReceive);
+    const s3 = diffMin(tReceive, tVerify);
+    const total = diffMin(tOrder, tVerify);
+    rows.push({
+      id: iID>=0?r[iID]||('R'+(i)):('R'+i),
+      test: iTest>=0?String(r[iTest]||'Unknown'):('Row '+i),
+      tOrder, tCollect, tReceive, tVerify,
+      s1, s2, s3, total,
+      missing: !tOrder||!tCollect||!tReceive||!tVerify
+    });
+  }
+  return rows;
+}
+
+/* ── SAMPLE DATA ── */
+function loadSample(){
+  const tests = ['CBC','BMP','LFT','Troponin','PT/INR','Blood Culture','Urinalysis','HbA1c','ABG','CRP'];
+  const rows = [];
+  const base = new Date(); base.setHours(0,0,0,0);
+  for(let i=0;i<120;i++){
+    const h = Math.floor(Math.random()*24);
+    const tOrder = new Date(base.getTime() - Math.random()*7*86400000);
+    tOrder.setHours(h, Math.floor(Math.random()*60));
+    const s1 = 5+Math.random()*18;
+    const s2 = 4+Math.random()*14;
+    const s3 = 20+Math.random()*45;
+    const missing = Math.random()<.05;
+    const tCollect = new Date(tOrder.getTime()+s1*60000);
+    const tReceive = new Date(tCollect.getTime()+s2*60000);
+    const tVerify  = missing ? null : new Date(tReceive.getTime()+s3*60000);
+    const total = tVerify?(tVerify-tOrder)/60000:null;
+    rows.push({
+      id:'PT'+(1000+i), test:tests[i%tests.length],
+      tOrder, tCollect, tReceive, tVerify,
+      s1:Math.round(s1*10)/10, s2:Math.round(s2*10)/10,
+      s3:tVerify?Math.round(s3*10)/10:null,
+      total:total?Math.round(total*10)/10:null, missing
+    });
+  }
+  rawData = rows;
+  applyFilters();
+  populateTestFilter();
+  showToast('✓ Sample data loaded — 120 records');
+  show('liveStatus');
+  hide('uploadSection');
+}
+
+/* ── FILE UPLOAD ── */
+document.getElementById('fileInput').addEventListener('change', function(e){
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const wb = XLSX.read(ev.target.result, {type:'array', cellDates:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    rawData = parseRows(ws);
+    if(!rawData.length){ showToast('⚠ No valid rows found. Check column headers.'); return; }
+    populateTestFilter();
+    applyFilters();
+    showToast(`✓ Loaded ${rawData.length} records from ${file.name}`);
+    show('liveStatus');
+    hide('uploadSection');
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+/* ── DRAG & DROP ── */
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{
+  e.preventDefault(); dz.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if(file){ document.getElementById('fileInput').files=e.dataTransfer.files; document.getElementById('fileInput').dispatchEvent(new Event('change')); }
+});
+
+/* ── FILTERS ── */
+function populateTestFilter(){
+  const sel = document.getElementById('filterTest');
+  const tests = [...new Set(rawData.map(r=>r.test))].sort();
+  sel.innerHTML = '<option value="">All tests</option>' + tests.map(t=>`<option>${t}</option>`).join('');
+}
+
+function applyFilters(){
+  const from = document.getElementById('filterFrom').value;
+  const to   = document.getElementById('filterTo').value;
+  const test = document.getElementById('filterTest').value;
+  const sla  = document.getElementById('filterSLA').value;
+  filteredData = rawData.filter(r=>{
+    if(from && r.tOrder && r.tOrder < new Date(from)) return false;
+    if(to   && r.tOrder && r.tOrder > new Date(to+'T23:59:59')) return false;
+    if(test && r.test !== test) return false;
+    if(sla==='ok' && (r.total==null||r.total>60)) return false;
+    if(sla==='over' && (r.total==null||r.total<=60)) return false;
+    if(sla==='missing' && !r.missing) return false;
+    return true;
+  });
+  renderAll();
+}
+
+function resetFilters(){
+  ['filterFrom','filterTo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('filterTest').value='';
+  document.getElementById('filterSLA').value='';
+  applyFilters();
+}
+
+/* ── RENDER ALL ── */
+function renderAll(){
+  const d = filteredData;
+  const total = d.length;
+  if(!total){ showSections(false); return; }
+  showSections(true);
+
+  const valid  = d.filter(r=>r.total!=null);
+  const tatArr = valid.map(r=>r.total);
+  const within = tatArr.filter(v=>v<=60).length;
+  const over   = tatArr.filter(v=>v>60).length;
+  const miss   = d.filter(r=>r.missing).length;
+  const avgTAT = avg(tatArr);
+  const medTAT = med(tatArr);
+  const p90TAT = p90(tatArr);
+
+  const s1arr = d.filter(r=>r.s1!=null).map(r=>r.s1);
+  const s2arr = d.filter(r=>r.s2!=null).map(r=>r.s2);
+  const s3arr = d.filter(r=>r.s3!=null).map(r=>r.s3);
+  const avgS1=avg(s1arr), avgS2=avg(s2arr), avgS3=avg(s3arr);
+
+  /* KPIs */
+  document.getElementById('m-total').textContent = total;
+  const slaP = pct(within, tatArr.length);
+  document.getElementById('m-sla').textContent = slaP+'%';
+  document.getElementById('mc-sla').className = 'metric-card '+(slaP>=90?'ok':slaP>=75?'warn':'bad');
+  document.getElementById('m-avg').textContent = Math.round(avgTAT)+' min';
+  document.getElementById('mc-avg').className = 'metric-card '+(avgTAT<=60?'ok':avgTAT<=75?'warn':'bad');
+  document.getElementById('m-med').textContent = Math.round(medTAT)+' min';
+  document.getElementById('mc-med').className = 'metric-card '+(medTAT<=60?'ok':medTAT<=75?'warn':'bad');
+  document.getElementById('m-p90').textContent = Math.round(p90TAT)+' min';
+  document.getElementById('m-over').textContent = over;
+  document.getElementById('mc-over').className = 'metric-card '+(over===0?'ok':over<total*.1?'warn':'bad');
+  document.getElementById('m-missing').textContent = miss;
+  const worst = avgS1>10&&avgS1>=avgS2&&avgS1>=avgS3?'Step 1':avgS2>10&&avgS2>=avgS3?'Step 2':'Step 3';
+  document.getElementById('m-worst').textContent = worst;
+  document.getElementById('mc-worst').className = 'metric-card bad';
+
+  /* Intervals */
+  ['i1','i2','i3'].forEach((key,idx)=>{
+    const arr=[s1arr,s2arr,s3arr][idx];
+    const targets=[10,10,35];
+    const a = Math.round(avg(arr)*10)/10;
+    const p = pct(arr.filter(v=>v<=targets[idx]).length, arr.length);
+    const color = p>=90?'var(--green)':p>=70?'var(--amber)':'var(--red)';
+    document.getElementById(`${key}-avg`).textContent = a+' min';
+    document.getElementById(`${key}-avg`).style.color = color;
+    document.getElementById(`${key}-pct`).textContent = p+'%';
+    document.getElementById(`${key}-bar`).style.width = p+'%';
+    document.getElementById(`${key}-bar`).style.background = color;
+  });
+
+  renderCharts(d, tatArr, avgS1, avgS2, avgS3);
+  renderHeatmap(d);
+  renderWeakness(d);
+  renderTable(d);
+  runAI(d, {slaP, avgTAT, medTAT, p90TAT, over, miss, avgS1, avgS2, avgS3, total, worst});
+  document.getElementById('exportBtn').disabled = false;
+}
+
+function showSections(on){
+  ['filterSection','metricsSection','intervalSection','aiSection','chartsSection','heatmapSection','weaknessSection','tableSection']
+    .forEach(id=>{ document.getElementById(id).style.display = on?'':'none'; });
+  if(on) show('filterSection');
+}
+
+/* ── CHARTS ── */
+function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+function renderCharts(d, tatArr, avgS1, avgS2, avgS3){
+  /* Histogram */
+  destroyChart('hist');
+  const bins=[0,10,20,30,40,50,60,70,80,90,100,999];
+  const labels=['0-10','10-20','20-30','30-40','40-50','50-60','60-70','70-80','80-90','90-100','100+'];
+  const counts=Array(labels.length).fill(0);
+  tatArr.forEach(v=>{ const b=bins.findIndex((b,i)=>v>=b&&v<bins[i+1]); if(b>=0) counts[b]++; });
+  charts['hist']=new Chart(document.getElementById('chartHist'),{
+    type:'bar',
+    data:{labels,datasets:[{label:'Records',data:counts,backgroundColor:counts.map((_,i)=>i<=5?'#10b981cc':'#ef4444cc'),borderRadius:4,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{font:{size:10},color:'#6b7a99'},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{font:{size:10},color:'#6b7a99'},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+
+  /* Interval bars */
+  destroyChart('interval');
+  charts['interval']=new Chart(document.getElementById('chartInterval'),{
+    type:'bar',
+    data:{labels:['Step 1\n(≤10 min)','Step 2\n(≤10 min)','Step 3\n(≤35 min)'],
+      datasets:[
+        {label:'Average',data:[Math.round(avgS1*10)/10,Math.round(avgS2*10)/10,Math.round(avgS3*10)/10],backgroundColor:['#3b82f6cc','#06b6d4cc','#8b5cf6cc'],borderRadius:6},
+        {label:'Target',data:[10,10,35],type:'line',borderColor:'#ef4444',borderDash:[5,4],pointRadius:0,borderWidth:2,fill:false}
+      ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+
+  /* By hour */
+  destroyChart('hour');
+  const byHour=Array(24).fill(null).map(()=>[]);
+  d.filter(r=>r.tOrder&&r.total!=null).forEach(r=>byHour[r.tOrder.getHours()].push(r.total));
+  const hourAvg=byHour.map(a=>a.length?Math.round(avg(a)):null);
+  charts['hour']=new Chart(document.getElementById('chartHour'),{
+    type:'line',
+    data:{labels:Array.from({length:24},(_,i)=>i+':00'),
+      datasets:[{label:'Avg TAT',data:hourAvg,borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,.1)',fill:true,tension:.3,pointRadius:3,pointBackgroundColor:'#3b82f6',spanGaps:true},
+                {label:'SLA 60',data:Array(24).fill(60),borderColor:'#ef4444',borderDash:[5,4],pointRadius:0,borderWidth:1.5,fill:false}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7a99',font:{size:9},maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+
+  /* By shift */
+  destroyChart('shift');
+  const shiftMap={'Morning (07–15)':[],'Afternoon (15–23)':[],'Night (23–07)':[]};
+  d.filter(r=>r.tOrder&&r.total!=null).forEach(r=>{ const s=shift(r.tOrder.getHours()); if(shiftMap[s]) shiftMap[s].push(r.total); });
+  const shiftLabels=Object.keys(shiftMap);
+  const shiftAvg=shiftLabels.map(s=>shiftMap[s].length?Math.round(avg(shiftMap[s])):0);
+  charts['shift']=new Chart(document.getElementById('chartShift'),{
+    type:'bar',
+    data:{labels:shiftLabels.map(s=>s.split(' ')[0]),datasets:[{label:'Avg TAT',data:shiftAvg,backgroundColor:['#f59e0bcc','#3b82f6cc','#8b5cf6cc'],borderRadius:8}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7a99'},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+
+  /* By test */
+  destroyChart('test');
+  const testMap={};
+  d.filter(r=>r.total!=null).forEach(r=>{ if(!testMap[r.test]) testMap[r.test]=[]; testMap[r.test].push(r.total); });
+  const testLabels=Object.keys(testMap).sort((a,b)=>avg(testMap[b])-avg(testMap[a])).slice(0,12);
+  const testAvg=testLabels.map(t=>Math.round(avg(testMap[t])));
+  charts['test']=new Chart(document.getElementById('chartTest'),{
+    type:'bar',
+    data:{labels:testLabels,datasets:[
+      {label:'Avg TAT',data:testAvg,backgroundColor:testAvg.map(v=>v>60?'#ef4444cc':'#10b981cc'),borderRadius:4},
+      {label:'SLA',data:Array(testLabels.length).fill(60),type:'line',borderColor:'#ef4444',borderDash:[6,4],pointRadius:0,borderWidth:2,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},y:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}}}}
+  });
+}
+
+/* ── HEATMAP ── */
+function renderHeatmap(d){
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const mat=Array(7).fill(null).map(()=>Array(24).fill(null).map(()=>[]));
+  d.filter(r=>r.tOrder&&r.total!=null).forEach(r=>mat[r.tOrder.getDay()][r.tOrder.getHours()].push(r.total));
+  const vals=mat.flat().flat().filter(Boolean);
+  const maxVal=Math.max(...vals,1);
+  let html='<div style="display:grid;grid-template-columns:36px repeat(24,1fr);gap:2px;font-size:10px;">';
+  html+='<div></div>'+Array.from({length:24},(_,h)=>`<div style="text-align:center;color:var(--muted);padding-bottom:3px;">${h}</div>`).join('');
+  days.forEach((day,di)=>{
+    html+=`<div style="color:var(--muted);display:flex;align-items:center;font-size:10px;padding-right:4px;">${day}</div>`;
+    for(let h=0;h<24;h++){
+      const cell=mat[di][h];
+      const a=cell.length?avg(cell):null;
+      const intensity=a?Math.min(a/maxVal,1):0;
+      const r=a?Math.round(239*intensity):30;
+      const g=a?Math.round(68*(1-intensity)+180*intensity*(intensity<.5?1:0)):40;
+      const b=a?Math.round(68*(1-intensity)):60;
+      const bg=a?`rgb(${r},${g},${b})`:'rgba(255,255,255,.03)';
+      html+=`<div title="${a?Math.round(a)+' min avg ('+cell.length+' records)':'No data'}" style="aspect-ratio:1;border-radius:3px;background:${bg};cursor:default;"></div>`;
+    }
+  });
+  html+='</div>';
+  document.getElementById('heatmapGrid').innerHTML=html;
+}
+
+/* ── WEAKNESS ANALYSIS ── */
+function renderWeakness(d){
+  const testMap={};
+  d.filter(r=>r.total!=null).forEach(r=>{ if(!testMap[r.test]) testMap[r.test]=[]; testMap[r.test].push(r.total); });
+  const sorted=Object.entries(testMap).sort((a,b)=>avg(b[1])-avg(a[1])).slice(0,8);
+  const maxV=sorted.length?avg(sorted[0][1]):1;
+  document.getElementById('weakTest').innerHTML=sorted.map(([name,arr],i)=>{
+    const a=Math.round(avg(arr));
+    return `<div class="weakness-row">
+      <span class="weakness-rank">${i+1}</span>
+      <span class="weakness-name">${name}</span>
+      <div class="weakness-bar"><div class="weakness-fill" style="width:${Math.round(a/maxV*100)}%;background:${a>60?'var(--red)':'var(--amber)'};"></div></div>
+      <span class="weakness-val" style="color:${a>60?'var(--red)':'var(--amber)'}">${a} min</span>
+    </div>`;
+  }).join('');
+
+  const hourMap=Array(24).fill(null).map(()=>({over:0,total:0}));
+  d.filter(r=>r.tOrder&&r.total!=null).forEach(r=>{
+    const h=r.tOrder.getHours();
+    hourMap[h].total++;
+    if(r.total>60) hourMap[h].over++;
+  });
+  const hourSorted=hourMap.map((v,h)=>({h,pct:v.total?pct(v.over,v.total):0,total:v.total})).filter(v=>v.total>0).sort((a,b)=>b.pct-a.pct).slice(0,8);
+  const maxP=hourSorted.length?hourSorted[0].pct:1;
+  document.getElementById('weakHour').innerHTML=hourSorted.map(({h,pct:p,total},i)=>`
+    <div class="weakness-row">
+      <span class="weakness-rank">${i+1}</span>
+      <span class="weakness-name">${h}:00–${h+1}:00</span>
+      <div class="weakness-bar"><div class="weakness-fill" style="width:${Math.round(p/maxP*100)}%;background:${p>50?'var(--red)':'var(--amber)'};"></div></div>
+      <span class="weakness-val" style="color:${p>50?'var(--red)':'var(--amber)'}">${p}% over</span>
+    </div>`).join('');
+}
+
+/* ── DELAYED TABLE ── */
+function renderTable(d){
+  const over = d.filter(r=>r.total!=null&&r.total>60).sort((a,b)=>b.total-a.total).slice(0,50);
+  document.getElementById('delayedTable').innerHTML=over.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td>${r.id}</td>
+      <td>${r.test}</td>
+      <td>${r.tOrder?r.tOrder.toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'}):'--'}</td>
+      <td class="${r.s1!=null&&r.s1>10?'td-over':'td-ok'}">${r.s1!=null?r.s1+' min':'--'}</td>
+      <td class="${r.s2!=null&&r.s2>10?'td-over':'td-ok'}">${r.s2!=null?r.s2+' min':'--'}</td>
+      <td class="${r.s3!=null&&r.s3>35?'td-over':'td-ok'}">${r.s3!=null?r.s3+' min':'--'}</td>
+      <td class="td-over" style="font-weight:600">${r.total} min</td>
+      <td><span style="background:rgba(239,68,68,.15);color:#ef4444;font-size:11px;padding:2px 8px;border-radius:20px;">Over SLA</span></td>
+    </tr>`).join('')||'<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">No delayed records — all within SLA 🎉</td></tr>';
+}
+
+/* ── AI INTERPRETATION ── */
+async function runAI(data, stats){
+  if(!data) data=filteredData;
+  if(!stats){
+    const tatArr=data.filter(r=>r.total!=null).map(r=>r.total);
+    const s1arr=data.filter(r=>r.s1!=null).map(r=>r.s1);
+    const s2arr=data.filter(r=>r.s2!=null).map(r=>r.s2);
+    const s3arr=data.filter(r=>r.s3!=null).map(r=>r.s3);
+    stats={slaP:pct(tatArr.filter(v=>v<=60).length,tatArr.length),avgTAT:avg(tatArr),medTAT:med(tatArr),p90TAT:p90(tatArr),over:tatArr.filter(v=>v>60).length,miss:data.filter(r=>r.missing).length,avgS1:avg(s1arr),avgS2:avg(s2arr),avgS3:avg(s3arr),total:data.length};
+  }
+  const testMap={};
+  data.filter(r=>r.total!=null).forEach(r=>{ if(!testMap[r.test]) testMap[r.test]=[]; testMap[r.test].push(r.total); });
+  const worstTests=Object.entries(testMap).sort((a,b)=>avg(b[1])-avg(a[1])).slice(0,3).map(([n,a])=>`${n} (avg ${Math.round(avg(a))} min)`).join(', ');
+
+  const prompt=`You are a clinical laboratory quality expert specializing in Emergency Room TAT (Turnaround Time) analysis. Analyze this ER lab performance data and provide a concise executive interpretation:
+
+DATA SUMMARY:
+- Total records: ${stats.total}
+- SLA compliance (≤60 min): ${stats.slaP}%
+- Average TAT: ${Math.round(stats.avgTAT)} min
+- Median TAT: ${Math.round(stats.medTAT)} min
+- P90 TAT: ${Math.round(stats.p90TAT)} min
+- Records over 60 min: ${stats.over}
+- Missing timestamps: ${stats.miss}
+- Step 1 avg (Order→Collection, target ≤10 min): ${Math.round(stats.avgS1)} min
+- Step 2 avg (Collection→Lab Received, target ≤10 min): ${Math.round(stats.avgS2)} min
+- Step 3 avg (Lab Received→Verified, target ≤35 min): ${Math.round(stats.avgS3)} min
+- Worst performing tests: ${worstTests||'N/A'}
+
+Write 3 short paragraphs (each 2-3 sentences):
+1. Overall performance assessment
+2. Where the main bottleneck is and what's driving it
+3. Top 2-3 specific, actionable recommendations for the lab manager
+
+Be direct, specific, and clinical. Avoid generic advice. Use the actual numbers.`;
+
+  document.getElementById('aiBody').innerHTML='<div class="ai-loading"><div class="ai-dots"><span></span><span></span><span></span></div> Analyzing your ER data…</div>';
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const json = await res.json();
+    if(json.error) throw new Error(json.error.message);
+    const text = json.content?.map(c=>c.text||'').join('').trim();
+    document.getElementById('aiBody').innerHTML = text.split('\n\n').filter(Boolean).map(p=>`<p>${p.trim()}</p>`).join('');
+  } catch(e) {
+    document.getElementById('aiBody').innerHTML=`<div class="ai-error">⚠ AI unavailable: ${e.message}. Check your network or API access.</div>`;
+  }
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV(){
+  const rows=[['ID','Test','Order Time','Step 1 (min)','Step 2 (min)','Step 3 (min)','Total TAT (min)','Status','Missing']];
+  filteredData.forEach(r=>rows.push([r.id,r.test,r.tOrder?r.tOrder.toISOString():'',r.s1??'',r.s2??'',r.s3??'',r.total??'',r.total==null?'Missing':r.total>60?'Over SLA':'Within SLA',r.missing?'Yes':'No']));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='ER_TAT_Report_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('✓ CSV exported');
+}
+</script>
 </body>
 </html>
