@@ -248,6 +248,9 @@ tr:hover td { background: rgba(255,255,255,.02); }
           Load Sample Data
         </button>
       </div>
+      <p style="margin-top:14px;font-size:12px;color:var(--muted);max-width:520px;margin-left:auto;margin-right:auto;">
+        💡 <strong style="color:var(--text)">Load Sample Data</strong> — instantly generates 120 realistic ER records across 10 test types and renders all charts, AI interpretation, and heatmap so you can see everything working before your real data is ready.
+      </p>
     </div>
   </div>
 
@@ -894,8 +897,32 @@ Be direct, specific, and clinical. Avoid generic advice. Use the actual numbers.
     const text = json.content?.map(c=>c.text||'').join('').trim();
     document.getElementById('aiBody').innerHTML = text.split('\n\n').filter(Boolean).map(p=>`<p>${p.trim()}</p>`).join('');
   } catch(e) {
-    document.getElementById('aiBody').innerHTML=`<div class="ai-error">⚠ AI unavailable: ${e.message}. Check your network or API access.</div>`;
+    document.getElementById('aiBody').innerHTML = ruleBasedInterpretation(stats, worstTests).map(p=>`<p>${p}</p>`).join('');
   }
+}
+
+function ruleBasedInterpretation(stats, worstTests) {
+  const grade = stats.slaP >= 90 ? 'strong' : stats.slaP >= 75 ? 'moderate' : 'poor';
+  const bottleneck = stats.avgS3 > Math.max(stats.avgS1, stats.avgS2)
+    ? `Step 3 (Lab Received → Verified, avg ${Math.round(stats.avgS3)} min vs 35-min target)`
+    : stats.avgS1 >= stats.avgS2
+    ? `Step 1 (Doctor Order → Collection, avg ${Math.round(stats.avgS1)} min vs 10-min target)`
+    : `Step 2 (Collection → Lab Received, avg ${Math.round(stats.avgS2)} min vs 10-min target)`;
+
+  const p1 = `Out of ${stats.total} records analyzed, ${stats.slaP}% met the 60-minute SLA — a ${grade} result. Average TAT was ${Math.round(stats.avgTAT)} min (median ${Math.round(stats.medTAT)} min, P90 ${Math.round(stats.p90TAT)} min), with ${stats.over} records exceeding the target.`;
+
+  const p2 = `The primary bottleneck is ${bottleneck}.${worstTests ? ` Worst-performing tests: ${worstTests}.` : ''} ${stats.miss > 0 ? `${stats.miss} records have missing timestamps, which may undercount the true delay rate.` : 'Timestamp completeness is good across this dataset.'}`;
+
+  const recs = [];
+  if (stats.avgS1 > 10) recs.push(`Reduce phlebotomy response time — avg collection delay of ${Math.round(stats.avgS1)} min exceeds the 10-min target`);
+  if (stats.avgS2 > 10) recs.push(`Improve specimen transport — ${Math.round(stats.avgS2)}-min avg transport should be under 10 min`);
+  if (stats.avgS3 > 35) recs.push(`Streamline lab processing — ${Math.round(stats.avgS3)}-min avg verification time exceeds the 35-min target`);
+  if (stats.miss > stats.total * 0.05) recs.push(`Fix timestamp data entry — ${stats.miss} missing records distort compliance reporting`);
+  if (!recs.length) recs.push('Maintain current workflow and monitor for regression weekly');
+
+  const p3 = `Recommended actions: (1) ${recs[0]}. (2) ${recs[1] || 'Continue monitoring all three intervals weekly and escalate if P90 exceeds 90 min'}. ${recs[2] ? `(3) ${recs[2]}.` : ''}`;
+
+  return [p1, p2, p3];
 }
 
 /* ── EXPORT CSV ── */
