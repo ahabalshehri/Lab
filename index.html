@@ -237,7 +237,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <span class="upload-icon">📋</span>
       <h3>Upload your ER Excel file</h3>
       <p>Drag & drop or click to browse — .xlsx, .xls, or .csv accepted</p>
-      <p style="margin-top:6px;font-size:12px;color:var(--muted)">Required columns: doctor order time · sample collection · lab received · verified/released result</p>
+      <p style="margin-top:6px;font-size:12px;color:var(--muted)">Required columns: doctor order time · sample collection · lab received · result sent to requester</p>
       <div class="upload-actions" onclick="e=>e.stopPropagation()">
         <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
@@ -304,7 +304,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       <div class="metric-card" id="mc-sla">
         <div class="mc-label">Within SLA (≤60 min)</div>
         <div class="mc-value" id="m-sla">--%</div>
-        <div class="mc-sub">Doctor order → verified result</div>
+        <div class="mc-sub">Doctor order → result sent to requester</div>
       </div>
       <div class="metric-card" id="mc-avg">
         <div class="mc-label">Average TAT</div>
@@ -365,7 +365,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
       </div>
       <div class="interval-card">
         <div class="interval-num">Step 3</div>
-        <div class="interval-name">Lab Received → Verified Result</div>
+        <div class="interval-name">Lab Received → Result Sent to Requester</div>
         <div class="interval-target">Target ≤ 35 min</div>
         <div class="interval-avg" id="i3-avg">-- min</div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
@@ -467,9 +467,9 @@ tr:hover td { background: rgba(255,255,255,.02); }
             <th>Patient / ID</th>
             <th>Test</th>
             <th>Order time</th>
-            <th>Step 1</th>
-            <th>Step 2</th>
-            <th>Step 3</th>
+            <th title="Doctor Order → Collection">Step 1</th>
+            <th title="Collection → Lab Received">Step 2</th>
+            <th title="Lab Received → Result Sent to Requester">Step 3</th>
             <th>Total TAT</th>
             <th>Status</th>
           </tr>
@@ -522,7 +522,7 @@ function parseRows(ws){
   const iOrder       = detectCol(headers,[/order/,/doctor.*order/,/ord.*time/,/physician.*order/,/request/]);
   const iCollect     = detectCol(headers,[/collec/,/draw/,/specimen.*time/,/sample.*time/,/phlebotomy/]);
   const iReceive     = detectCol(headers,[/receiv/,/lab.*receiv/,/arrival/,/accession/]);
-  const iVerify      = detectCol(headers,[/verif/,/result.*time/,/release/,/report.*time/,/complete/]);
+  const iVerify      = detectCol(headers,[/verif/,/sent.*requester/,/result.*sent/,/dispatch/,/result.*time/,/release/,/report.*time/,/complete/]);
   const iTest        = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/]);
   const iID          = detectCol(headers,[/patient.*id/,/mrn/,/visit/,/encounter/,/id/,/accession/]);
   const iPatientType = detectCol(headers,[/patient.*type/,/patient.*class/,/pt.*type/,/visit.*type/,/care.*type/,/encounter.*type/,/admission.*type/,/patient.*category/,/نوع.*مريض/,/تصنيف.*مريض/]);
@@ -895,7 +895,7 @@ DATA SUMMARY:
 - Missing timestamps: ${stats.miss}
 - Step 1 avg (Order→Collection, target ≤10 min): ${Math.round(stats.avgS1)} min
 - Step 2 avg (Collection→Lab Received, target ≤10 min): ${Math.round(stats.avgS2)} min
-- Step 3 avg (Lab Received→Verified, target ≤35 min): ${Math.round(stats.avgS3)} min
+- Step 3 avg (Lab Received→Result Sent to Requester, target ≤35 min): ${Math.round(stats.avgS3)} min
 - Worst performing tests: ${worstTests||'N/A'}
 
 Write 3 short paragraphs (each 2-3 sentences):
@@ -929,7 +929,7 @@ Be direct, specific, and clinical. Avoid generic advice. Use the actual numbers.
 function ruleBasedInterpretation(stats, worstTests) {
   const grade = stats.slaP >= 90 ? 'strong' : stats.slaP >= 75 ? 'moderate' : 'poor';
   const bottleneck = stats.avgS3 > Math.max(stats.avgS1, stats.avgS2)
-    ? `Step 3 (Lab Received → Verified, avg ${Math.round(stats.avgS3)} min vs 35-min target)`
+    ? `Step 3 (Lab Received → Result Sent to Requester, avg ${Math.round(stats.avgS3)} min vs 35-min target)`
     : stats.avgS1 >= stats.avgS2
     ? `Step 1 (Doctor Order → Collection, avg ${Math.round(stats.avgS1)} min vs 10-min target)`
     : `Step 2 (Collection → Lab Received, avg ${Math.round(stats.avgS2)} min vs 10-min target)`;
@@ -941,7 +941,7 @@ function ruleBasedInterpretation(stats, worstTests) {
   const recs = [];
   if (stats.avgS1 > 10) recs.push(`Reduce phlebotomy response time — avg collection delay of ${Math.round(stats.avgS1)} min exceeds the 10-min target`);
   if (stats.avgS2 > 10) recs.push(`Improve specimen transport — ${Math.round(stats.avgS2)}-min avg transport should be under 10 min`);
-  if (stats.avgS3 > 35) recs.push(`Streamline lab processing — ${Math.round(stats.avgS3)}-min avg verification time exceeds the 35-min target`);
+  if (stats.avgS3 > 35) recs.push(`Streamline lab processing — ${Math.round(stats.avgS3)}-min avg time to result dispatch exceeds the 35-min target`);
   if (stats.miss > stats.total * 0.05) recs.push(`Fix timestamp data entry — ${stats.miss} missing records distort compliance reporting`);
   if (!recs.length) recs.push('Maintain current workflow and monitor for regression weekly');
 
