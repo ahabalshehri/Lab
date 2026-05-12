@@ -89,6 +89,21 @@ tr:hover td { background: rgba(255,255,255,.02); }
 
 .empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
 
+.history-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.history-item { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; display: flex; align-items: center; gap: 12px; transition: border-color .15s; }
+.history-item:hover { border-color: var(--border2); }
+.history-meta { flex: 1; min-width: 0; }
+.history-facility { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.history-detail { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.history-count { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--accent2); text-align: right; white-space: nowrap; line-height: 1; }
+.history-count small { font-size: 10px; color: var(--muted); display: block; font-family: var(--font); font-weight: 400; text-align: right; margin-top: 2px; }
+.history-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-danger { color: var(--red); }
+.btn-danger:hover { background: var(--redlight); border-color: rgba(239,68,68,.2); color: var(--red); }
+.btn-success { background: var(--greenlight); border-color: rgba(16,185,129,.2); color: #34d399; }
+.btn-success:hover { background: rgba(16,185,129,.2); }
+
 @media (max-width: 600px) {
   header { padding: 0 14px; }
   .main { padding: 16px 12px; }
@@ -113,6 +128,13 @@ tr:hover td { background: rgba(255,255,255,.02); }
 
   <!-- UPLOAD -->
   <div id="uploadSection" class="section">
+
+    <!-- History (shown when saved entries exist) -->
+    <div id="historySection" style="display:none" class="section">
+      <div class="section-title">Saved Reports</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
     <label for="fileInput" style="display:block;cursor:pointer">
       <div class="upload-zone" id="dropZone">
         <span class="upload-icon">📂</span>
@@ -132,6 +154,13 @@ tr:hover td { background: rgba(255,255,255,.02); }
 
   <!-- RESULTS (hidden until data loaded) -->
   <div id="resultsSection" style="display:none">
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <button class="btn btn-sm" onclick="backToUpload()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="15 18 9 12 15 6"/></svg>
+        New Upload
+      </button>
+    </div>
 
     <div class="section">
       <div class="section-title">Report info</div>
@@ -193,10 +222,16 @@ tr:hover td { background: rgba(255,255,255,.02); }
           <strong id="downloadFilename">ADAA Blood Bank Report.xlsx</strong>
           <span id="downloadDesc">Formatted for ADAA template</span>
         </div>
-        <button class="btn btn-primary" id="downloadBtn" onclick="downloadExcel().catch(e=>showToast('⚠ '+e.message,5000))">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download Formatted Excel
-        </button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm" id="saveBtn" onclick="saveSnapshot()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save to History
+          </button>
+          <button class="btn btn-primary" id="downloadBtn" onclick="downloadExcel().catch(e=>showToast('⚠ '+e.message,5000))">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download Excel
+          </button>
+        </div>
       </div>
     </div>
 
@@ -414,6 +449,10 @@ function processFile(file) {
       }
       reportData = parsed;
       renderResults(file.name);
+      // Reset save button for new upload
+      const sb = document.getElementById('saveBtn');
+      sb.className = 'btn btn-sm'; sb.disabled = false;
+      sb.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save to History';
       showToast(`✓ Loaded ${parsed.donors.length} donor records`);
       document.getElementById('uploadSection').style.display = 'none';
       document.getElementById('resultsSection').style.display = '';
@@ -596,6 +635,121 @@ async function downloadExcel() {
   document.body.removeChild(a); URL.revokeObjectURL(url);
   showToast(`✓ Downloaded: ${fname}`);
 }
+
+/* ── HISTORY ── */
+const HISTORY_KEY = 'bbHistory';
+const MAX_HISTORY = 20;
+
+function saveSnapshot() {
+  if (!reportData) return;
+  const { info, donors } = reportData;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const adaaDate = d => d ? `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}` : '';
+  const fromD = info.startDate || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>a-b)[0];
+  const toD   = info.endDate   || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>b-a)[0];
+  const groups = {};
+  donors.forEach(d => { const bg = d.bloodGroup||'Unknown'; groups[bg]=(groups[bg]||0)+1; });
+
+  const entry = {
+    id: Date.now(),
+    savedAt: new Date().toISOString(),
+    facility: info.facility || 'Unknown',
+    region: info.region || '',
+    fromDate: adaaDate(fromD),
+    toDate: adaaDate(toD),
+    totalDonors: donors.length,
+    bloodGroups: groups,
+    info: {
+      facility: info.facility, region: info.region,
+      startDate: info.startDate ? info.startDate.toISOString() : null,
+      endDate:   info.endDate   ? info.endDate.toISOString()   : null,
+    },
+    donors: donors.map(d => ({
+      ...d,
+      dob:     d.dob     ? d.dob.toISOString()     : null,
+      donDate: d.donDate ? d.donDate.toISOString() : null,
+    })),
+  };
+
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  history.unshift(entry);
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch(e) {
+    showToast('⚠ Storage full — delete older entries', 4000); return;
+  }
+  const btn = document.getElementById('saveBtn');
+  btn.classList.add('btn-success');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg> Saved';
+  btn.disabled = true;
+  showToast('✓ Saved to history');
+}
+
+function loadHistory() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const section = document.getElementById('historySection');
+  const list    = document.getElementById('historyList');
+  if (!history.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  list.innerHTML = history.map(e => {
+    const saved = new Date(e.savedAt).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+    return `<div class="history-item">
+      <div class="history-meta">
+        <div class="history-facility">${e.facility}</div>
+        <div class="history-detail">${e.fromDate || '?'} → ${e.toDate || '?'} &nbsp;·&nbsp; Saved ${saved}</div>
+      </div>
+      <div class="history-count">${e.totalDonors}<small>donors</small></div>
+      <div class="history-actions">
+        <button class="btn btn-sm" onclick="loadSnapshot(${e.id})">Load</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteSnapshot(${e.id})" title="Delete">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadSnapshot(id) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const entry = history.find(e => e.id === id);
+  if (!entry) { showToast('⚠ Entry not found'); return; }
+  reportData = {
+    info: {
+      ...entry.info,
+      startDate: entry.info.startDate ? new Date(entry.info.startDate) : null,
+      endDate:   entry.info.endDate   ? new Date(entry.info.endDate)   : null,
+    },
+    donors: entry.donors.map(d => ({
+      ...d,
+      dob:     d.dob     ? new Date(d.dob)     : null,
+      donDate: d.donDate ? new Date(d.donDate) : null,
+    })),
+  };
+  renderResults(entry.facility);
+  document.getElementById('uploadSection').style.display = 'none';
+  document.getElementById('resultsSection').style.display = '';
+  // Mark as already saved
+  const btn = document.getElementById('saveBtn');
+  btn.classList.add('btn-success');
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg> Saved';
+  btn.disabled = true;
+  showToast(`✓ Loaded ${entry.totalDonors} donors from history`);
+}
+
+function deleteSnapshot(id) {
+  let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  history = history.filter(e => e.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  loadHistory();
+}
+
+function backToUpload() {
+  document.getElementById('resultsSection').style.display = 'none';
+  document.getElementById('uploadSection').style.display = '';
+  loadHistory();
+}
+
+// Init
+loadHistory();
 </script>
 </body>
 </html>
