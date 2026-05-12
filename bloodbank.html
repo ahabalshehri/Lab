@@ -289,61 +289,93 @@ function titleCase(s) {
 /* ── PARSE WATEEN FILE ── */
 function parseWateen(wb) {
   const ws = wb.Sheets[wb.SheetNames[0]];
-  const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  // blankrows:true keeps empty rows so indices stay stable
+  const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', blankrows: true });
 
-  const info = {
-    facility: String(json[0]?.[0] || '').trim(),
-    region: String(json[1]?.[0] || '').trim(),
-    startDate: null,
-    endDate: null,
-  };
+  const info = { facility: '', region: '', startDate: null, endDate: null };
 
-  // Find date row (has "Start Date" in col 0)
-  for (let r = 0; r < Math.min(20, json.length); r++) {
-    const row = json[r];
-    if (String(row[0]).toLowerCase().includes('start date')) {
-      // Col 1 = ": 1/04/2026" style
-      const sd = String(row[1] || '').replace(/^:\s*/, '').trim();
-      const ed = String(row[3] || '').replace(/^:\s*/, '').trim();
-      info.startDate = parseDate(sd);
-      info.endDate = parseDate(ed);
-      break;
-    }
-  }
-
-  // Find header row (has "First Name" or "First" in col 0)
+  // Scan all rows (up to 40) for metadata and header
   let headerRow = -1;
-  for (let r = 0; r < Math.min(20, json.length); r++) {
-    const cell = String(json[r]?.[0] || '').toLowerCase();
-    if (cell.includes('first') || cell.includes('اسم')) {
-      headerRow = r;
-      break;
+  for (let r = 0; r < Math.min(40, json.length); r++) {
+    const row = json[r];
+    // Facility: first non-empty row with a string value
+    if (!info.facility) {
+      const v = String(row[0] || '').trim();
+      if (v && !/^\d+$/.test(v)) info.facility = v;
+    }
+
+    // Date row: any cell in row contains "start date"
+    const rowText = row.map(c => String(c).toLowerCase()).join(' ');
+    if (!info.startDate && rowText.includes('start date')) {
+      // values follow the key in the same row: "Start Date" | ": 1/04/2026" | "End date" | ": 11/05/2026"
+      for (let c = 0; c < row.length - 1; c++) {
+        const k = String(row[c]).toLowerCase();
+        const v = String(row[c + 1] || '').replace(/^[:\s]+/, '').trim();
+        if (k.includes('start') && v) info.startDate = parseDate(v);
+        if (k.includes('end') && v)   info.endDate   = parseDate(v);
+      }
+    }
+
+    // Header row: row where any cell contains "first name" / "first" + "last"
+    if (headerRow === -1 && rowText.includes('first') && (rowText.includes('last') || rowText.includes('name'))) {
+      // Verify it really looks like a header (not a data row)
+      const hasBlood  = rowText.includes('blood') || rowText.includes('فصيل');
+      const hasDonate = rowText.includes('donat') || rowText.includes('تبر');
+      if (hasBlood || hasDonate || rowText.includes('gender') || rowText.includes('dob')) {
+        headerRow = r;
+      }
     }
   }
-  if (headerRow === -1) return { info, donors: [] };
 
-  // Map column indices from header row
-  const headers = json[headerRow].map(h => String(h).toLowerCase());
-  const col = (patterns) => {
+  // Fallback: if still no header, try known Wateen fixed layout (header on row index 12)
+  if (headerRow === -1) {
+    for (let r = 10; r < Math.min(16, json.length); r++) {
+      const row = json[r];
+      if (row.filter(c => String(c).trim()).length >= 6) { headerRow = r; break; }
+    }
+  }
+
+  if (headerRow === -1) return { info, donors: [], debug: `Could not find header row in first 40 rows` };
+
+  // Map columns dynamically from header row
+  const headers = json[headerRow].map(h => String(h).toLowerCase().replace(/\s+/g, ' ').trim());
+
+  const col = (...patterns) => {
     for (const p of patterns) {
-      const i = headers.findIndex(h => p.test(h));
+      const i = headers.findIndex(h => (p instanceof RegExp ? p.test(h) : h.includes(p)));
       if (i >= 0) return i;
     }
     return -1;
   };
 
-  const iFirst    = col([/first\s*name/, /^first$/]);
-  const iLast     = col([/last\s*name/, /^last$/]);
-  const iDob      = col([/dob/, /date.*birth/, /birth/]);
-  const iNat      = col([/national.*id/, /iqama/, /id\s*or/]);
-  const iNation   = col([/nationality/, /جنسية/]);
-  const iPhone    = col([/phone/, /mobile/, /جوال/]);
-  const iGender   = col([/gender/, /جنس/]);
-  const iBlood    = col([/blood.*group/, /blood.*type/, /فصيلة/]);
-  const iBag      = col([/bag/, /كيس/]);
-  const iDonType  = col([/donation.*type/, /type.*donation/, /نوع.*تبر/]);
-  const iDonDate  = col([/donation.*date/, /date.*donation/, /تاريخ.*تبر/]);
-  const iCollPt   = col([/collection.*point/, /مكان.*تبر/]);
+  // Dynamic detection with generous patterns
+  let iFirst   = col(/first\s*name/, 'first');
+  let iLast    = col(/last\s*name/, 'last');
+  let iDob     = col('dob', /birth/);
+  let iNat     = col(/national.*id/, 'iqama', /id.*or/);
+  let iNation  = col('nationality', 'جنسية');
+  let iPhone   = col('phone', 'mobile', 'جوال');
+  let iGender  = col('gender', 'جنس');
+  let iBlood   = col(/blood.*group/, /blood.*type/, 'فصيلة', 'فصيل');
+  let iBag     = col('bag', 'كيس');
+  let iDonType = col(/donation.*type/, /type.*donat/, /نوع.*تبر/);
+  let iDonDate = col(/donation.*date/, /date.*donat/, /تاريخ.*تبر/);
+  let iCollPt  = col(/collection.*point/, /مكان/);
+
+  // Positional fallback for Wateen's fixed column order
+  // Col: 0=FirstName 1=LastName 2=DOB 3=NationalID 4=Nationality 5=Phone 6=Gender 7=BloodGroup 8=Bag 9=DonationType 10=DonationDate 11=CollectionPoint 12=CollectionDesc
+  if (iFirst   === -1) iFirst   = 0;
+  if (iLast    === -1) iLast    = 1;
+  if (iDob     === -1) iDob     = 2;
+  if (iNat     === -1) iNat     = 3;
+  if (iNation  === -1) iNation  = 4;
+  if (iPhone   === -1) iPhone   = 5;
+  if (iGender  === -1) iGender  = 6;
+  if (iBlood   === -1) iBlood   = 7;
+  if (iBag     === -1) iBag     = 8;
+  if (iDonType === -1) iDonType = 9;
+  if (iDonDate === -1) iDonDate = 10;
+  if (iCollPt  === -1) iCollPt  = 11;
 
   const donors = [];
   for (let r = headerRow + 1; r < json.length; r++) {
@@ -351,27 +383,27 @@ function parseWateen(wb) {
     const firstName = String(row[iFirst] ?? '').trim();
     const lastName  = String(row[iLast]  ?? '').trim();
     if (!firstName && !lastName) continue;
+    // Skip rows that look like sub-headers or totals
+    if (firstName.toLowerCase().includes('total') || firstName.toLowerCase().includes('name')) continue;
 
-    const dobRaw  = iDob >= 0  ? row[iDob]  : '';
-    const donRaw  = iDonDate >= 0 ? row[iDonDate] : '';
-    const dob     = parseDate(dobRaw);
-    const donDate = parseDate(donRaw);
+    const dob     = parseDate(row[iDob]);
+    const donDate = parseDate(row[iDonDate]);
 
     donors.push({
       seq: donors.length + 1,
       fullName: titleCase(`${firstName} ${lastName}`).trim(),
-      nationalId: iNat >= 0 ? String(row[iNat] ?? '').trim() : '',
-      nationality: iNation >= 0 ? titleCase(String(row[iNation] ?? '')) : '',
-      phone: iPhone >= 0 ? cleanPhone(row[iPhone]) : '',
-      gender: iGender >= 0 ? normalizeGender(row[iGender]) : '',
+      nationalId:    String(row[iNat]     ?? '').trim(),
+      nationality:   titleCase(String(row[iNation]  ?? '')),
+      phone:         cleanPhone(row[iPhone]),
+      gender:        normalizeGender(row[iGender]),
       dob,
-      age: calcAge(dob, donDate || new Date()),
-      bloodGroup: iBlood >= 0 ? String(row[iBlood] ?? '').trim() : '',
-      donationType: iDonType >= 0 ? String(row[iDonType] ?? '').trim() : '',
+      age:           calcAge(dob, donDate || new Date()),
+      bloodGroup:    String(row[iBlood]   ?? '').trim(),
+      donationType:  String(row[iDonType] ?? '').trim(),
       donDate,
-      donDateStr: fmtDate(donDate),
-      bagNumber: iBag >= 0 ? String(row[iBag] ?? '').trim() : '',
-      collectionPoint: iCollPt >= 0 ? String(row[iCollPt] ?? '').trim() : '',
+      donDateStr:    fmtDate(donDate),
+      bagNumber:     String(row[iBag]     ?? '').trim(),
+      collectionPoint: String(row[iCollPt] ?? '').trim(),
     });
   }
 
