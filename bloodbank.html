@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ADAA Blood Bank — Weekly Report</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx-js-style.min.js"></script>
 <style>
 :root {
   --bg: #0f1623; --bg2: #161e2e; --bg3: #1d2840;
@@ -504,86 +504,116 @@ function downloadExcel() {
   const fromStr = adaaDate(fromD);
   const toStr   = adaaDate(toD);
 
-  const wb = XLSX.utils.book_new();
-
-  // Build AOA matching the ADAA template layout (verified against actual example file)
-  const aoa = [];
-
-  // Row 1: empty
-  aoa.push([]);
-
-  // Row 2: title in C2 (template merges C2:G2)
-  aoa.push(['', '', 'Unified Data Collection Sheet']);
-
-  // Rows 3-7: empty
-  for (let i = 0; i < 5; i++) aoa.push([]);
-
-  // Row 8: B=Date(From) label, C=value, D=Date(To) label, E=value, F=blank (merged E:F), G=Service label, H=value
-  aoa.push([
-    '',
-    'Date (From)\nالتاريخ - من', fromStr,
-    'Date (To)\nالتاريخ - إلى', toStr,
-    '',
-    'Service\nالخدمة', 'Blood Bank /بنك الدم'
-  ]);
-
-  // Row 9: B=Facility label, C=value, D=City label, E=value, F=blank (merged E:F), G=Directorate label, H=value
-  aoa.push([
-    '',
-    'Facility Name\nاسم المنشأة', info.facility || '',
-    'City\nالمدينة', info.region || '',
-    '',
-    'Directorate\nالمديرية', ''
-  ]);
-
-  // Row 10: empty
-  aoa.push([]);
-
-  // Row 11: column headers (B=#, C=Visit Date, D=Name, E=Mobile, F=Gender, G=Age, H=Nationality, I=Blood Group, J=Donation Type, K=Bag No.)
-  aoa.push([
-    '',
-    '#',
-    'D/C or Visit Date\nتاريخ الخروج / الزيارة',
-    'Patient / Guardian Name\nاسم المريض / ولي أمر المريض',
-    'Mobile Number\nرقم الجوال',
-    'Gender\nالجنس',
-    'Age\nالعمر',
-    'Nationality\nالجنسية',
-    'Blood Group\nفصيلة الدم',
-    'Donation Type\nنوع التبرع',
-    'Bag Number\nرقم الكيس'
-  ]);
-
-  // Data rows from row 12: date as "DD-Mon-YYYY" text, age as "X Years"
+  // ── AOA (columns A–H only) ──────────────────────────────────────────
+  const aoa = [
+    [],                                                                   // row 1
+    ['', '', 'Unified Data Collection Sheet'],                            // row 2
+    [], [], [], [], [],                                                   // rows 3-7
+    ['', 'Date (From)\nالتاريخ - من', fromStr,                           // row 8
+         'Date (To)\nالتاريخ - إلى',  toStr,
+         '', 'Service\nالخدمة', 'Blood Bank /بنك الدم'],
+    ['', 'Facility Name\nاسم المنشأة', info.facility || '',              // row 9
+         'City\nالمدينة', info.region || '',
+         '', 'Directorate\nالمديرية', ''],
+    [],                                                                   // row 10
+    ['', '#',                                                             // row 11
+         'D/C or Visit Date\nتاريخ الخروج / الزيارة',
+         'Patient / Guardian Name\nاسم المريض / ولي أمر المريض',
+         'Mobile Number\nرقم الجوال',
+         'Gender\nالجنس',
+         'Age\nالعمر',
+         'Nationality\nالجنسية'],
+  ];
   donors.forEach((d, i) => {
-    const ageStr = d.age ? `${d.age} Years` : '';
+    const ageStr  = d.age ? `${d.age} Years` : '';
     const dateStr = adaaDate(d.donDate) || d.donDateStr || '';
-    aoa.push(['', i + 1, dateStr, d.fullName, d.phone, d.gender, ageStr, d.nationality, d.bloodGroup, d.donationType, d.bagNumber]);
+    aoa.push(['', i + 1, dateStr, d.fullName, d.phone, d.gender, ageStr, d.nationality]);
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-  // Set column widths
+  // ── Styles ───────────────────────────────────────────────────────────
+  const GRN = '066641', WHT = 'FFFFFF', BLK = '000000';
+  const thin = s => ({ style: 'thin', color: { rgb: '999999' } });
+  const border = { top: thin(), bottom: thin(), left: thin(), right: thin() };
+
+  const labelSt = {                          // green label cells (rows 8-9)
+    fill: { fgColor: { rgb: GRN } },
+    font: { bold: true, color: { rgb: WHT }, sz: 10, name: 'Times New Roman' },
+    alignment: { vertical: 'center', wrapText: true },
+    border
+  };
+  const valueSt = {                          // white value cells (rows 8-9)
+    font: { sz: 10, name: 'Times New Roman', color: { rgb: BLK } },
+    alignment: { vertical: 'center', wrapText: true },
+    border
+  };
+  const titleSt = {                          // row 2 title
+    font: { bold: true, sz: 14, color: { rgb: GRN }, name: 'Times New Roman' },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const hdrSt = {                            // row 11 column headers
+    fill: { fgColor: { rgb: GRN } },
+    font: { bold: true, color: { rgb: WHT }, sz: 10, name: 'Times New Roman' },
+    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+    border
+  };
+  const dataSt = {                           // data rows 12+
+    font: { sz: 10, name: 'Times New Roman', color: { rgb: BLK } },
+    alignment: { vertical: 'center', wrapText: true },
+    border
+  };
+  const numSt = {                            // # column — centered
+    font: { sz: 10, name: 'Times New Roman', color: { rgb: BLK } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border
+  };
+
+  const applyS = (ref, s) => { if (ws[ref]) ws[ref].s = s; };
+
+  applyS('C2', titleSt);
+  ['B8','D8','G8'].forEach(r => applyS(r, labelSt));
+  ['C8','E8','F8','H8'].forEach(r => applyS(r, valueSt));
+  ['B9','D9','G9'].forEach(r => applyS(r, labelSt));
+  ['C9','E9','F9','H9'].forEach(r => applyS(r, valueSt));
+  ['B11','C11','D11','E11','F11','G11','H11'].forEach(r => applyS(r, hdrSt));
+
+  donors.forEach((_, i) => {
+    const row = i + 12;
+    applyS(`B${row}`, numSt);
+    ['C','D','E','F','G','H'].forEach(c => applyS(`${c}${row}`, dataSt));
+  });
+
+  // ── Column widths (A–H) ──────────────────────────────────────────────
   ws['!cols'] = [
-    { wch: 3 },   // A - empty
-    { wch: 6 },   // B - #
-    { wch: 18 },  // C - date
-    { wch: 34 },  // D - name
-    { wch: 16 },  // E - mobile
-    { wch: 10 },  // F - gender
-    { wch: 7 },   // G - age
-    { wch: 18 },  // H - nationality
-    { wch: 13 },  // I - blood group
-    { wch: 18 },  // J - donation type
-    { wch: 22 },  // K - bag number
+    { wch: 3 },   // A
+    { wch: 5 },   // B #
+    { wch: 16 },  // C date
+    { wch: 34 },  // D name
+    { wch: 15 },  // E mobile
+    { wch: 10 },  // F gender
+    { wch: 12 },  // G age
+    { wch: 20 },  // H nationality
+  ];
+
+  // ── Merge cells ──────────────────────────────────────────────────────
+  ws['!merges'] = [
+    { s: { r: 1, c: 2 }, e: { r: 1, c: 7 } },   // C2:H2  title
+    { s: { r: 7, c: 4 }, e: { r: 7, c: 5 } },   // E8:F8  date-to
+    { s: { r: 8, c: 4 }, e: { r: 8, c: 5 } },   // E9:F9  city
+  ];
+
+  // ── Row heights ──────────────────────────────────────────────────────
+  ws['!rows'] = [
+    {}, { hpt: 22 },                              // rows 1-2
+    {}, {}, {}, {}, {},                            // rows 3-7
+    { hpt: 36 }, { hpt: 36 }, {},                 // rows 8-10
+    { hpt: 42 },                                   // row 11
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Blood Bank');
 
-  const from = fromD ? fmtDateShort(fromD).replace(/\//g,'-') : 'from';
-  const to   = toD   ? fmtDateShort(toD).replace(/\//g,'-')   : 'to';
-  const fname = `ADAA Blood Bank ${from} - ${to}.xlsx`;
-
+  const fname = `ADAA Blood Bank ${fromStr || 'from'} - ${toStr || 'to'}.xlsx`;
   XLSX.writeFile(wb, fname);
   showToast(`✓ Downloaded: ${fname}`);
 }
