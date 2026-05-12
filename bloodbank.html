@@ -313,7 +313,14 @@ function parseWateen(wb) {
   }
 
   // Wateen fixed layout: row 13 = header (index 12), data from row 14 (index 13)
-  const headerRow = 12;
+  // Some .xls parsers collapse leading blank rows, so scan nearby rows if index 12 is missing/empty
+  let headerRow = 12;
+  const isHeaderRow = row => row && row.filter(c => String(c).trim()).length >= 5;
+  if (!isHeaderRow(json[12])) {
+    const found = [11, 13, 10, 14, 9].find(i => isHeaderRow(json[i]));
+    if (found !== undefined) headerRow = found;
+    else return { info, donors: [], debug: `Row 13 is empty and no nearby header found. Total rows parsed: ${json.length}` };
+  }
 
   // Map columns dynamically from header row
   const headers = json[headerRow].map(h => String(h).toLowerCase().replace(/\s+/g, ' ').trim());
@@ -356,7 +363,7 @@ function parseWateen(wb) {
   if (iCollPt  === -1) iCollPt  = 11;
 
   const donors = [];
-  for (let r = 13; r < json.length; r++) {
+  for (let r = headerRow + 1; r < json.length; r++) {
     const row = json[r];
     const firstName = String(row[iFirst] ?? '').trim();
     const lastName  = String(row[iLast]  ?? '').trim();
