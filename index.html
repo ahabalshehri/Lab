@@ -271,6 +271,14 @@ tr:hover td { background: rgba(255,255,255,.02); }
         <select id="filterTest"><option value="">All tests</option></select>
       </div>
       <div class="filter-group">
+        <div class="filter-label">Patient type</div>
+        <select id="filterPatientType">
+          <option value="ED">ED only</option>
+          <option value="">All types</option>
+          <option value="Inpatient">Inpatient only</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <div class="filter-label">SLA status</div>
         <select id="filterSLA">
           <option value="">All statuses</option>
@@ -511,12 +519,13 @@ function parseRows(ws){
   if(!json.length) return [];
   const headers = json[0].map(h=>String(h).trim());
 
-  const iOrder   = detectCol(headers,[/order/,/doctor.*order/,/ord.*time/,/physician.*order/,/request/]);
-  const iCollect = detectCol(headers,[/collec/,/draw/,/specimen.*time/,/sample.*time/,/phlebotomy/]);
-  const iReceive = detectCol(headers,[/receiv/,/lab.*receiv/,/arrival/,/accession/]);
-  const iVerify  = detectCol(headers,[/verif/,/result.*time/,/release/,/report.*time/,/complete/]);
-  const iTest    = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/]);
-  const iID      = detectCol(headers,[/patient.*id/,/mrn/,/visit/,/encounter/,/id/,/accession/]);
+  const iOrder       = detectCol(headers,[/order/,/doctor.*order/,/ord.*time/,/physician.*order/,/request/]);
+  const iCollect     = detectCol(headers,[/collec/,/draw/,/specimen.*time/,/sample.*time/,/phlebotomy/]);
+  const iReceive     = detectCol(headers,[/receiv/,/lab.*receiv/,/arrival/,/accession/]);
+  const iVerify      = detectCol(headers,[/verif/,/result.*time/,/release/,/report.*time/,/complete/]);
+  const iTest        = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/]);
+  const iID          = detectCol(headers,[/patient.*id/,/mrn/,/visit/,/encounter/,/id/,/accession/]);
+  const iPatientType = detectCol(headers,[/patient.*type/,/patient.*class/,/pt.*type/,/visit.*type/,/care.*type/,/encounter.*type/,/admission.*type/,/patient.*category/,/نوع.*مريض/,/تصنيف.*مريض/]);
 
   const rows = [];
   for(let i=1;i<json.length;i++){
@@ -533,12 +542,21 @@ function parseRows(ws){
     rows.push({
       id: iID>=0?r[iID]||('R'+(i)):('R'+i),
       test: iTest>=0?String(r[iTest]||'Unknown'):('Row '+i),
+      patientType: normalizePatientType(iPatientType>=0?r[iPatientType]:''),
       tOrder, tCollect, tReceive, tVerify,
       s1, s2, s3, total,
       missing: !tOrder||!tCollect||!tReceive||!tVerify
     });
   }
   return rows;
+}
+
+function normalizePatientType(val){
+  const v = String(val||'').trim().toLowerCase();
+  if(!v) return 'Unknown';
+  if(/^(ed|er|emergency|emerg|emergency\s*department|emergency\s*room|طوارئ)/.test(v)) return 'ED';
+  if(/^(ip|inpatient|in-patient|in\s*patient|admitted|ward|داخلي|مرقد)/.test(v)) return 'Inpatient';
+  return String(val).trim() || 'Unknown';
 }
 
 /* ── SAMPLE DATA ── */
@@ -560,6 +578,7 @@ function loadSample(){
     const total = tVerify?(tVerify-tOrder)/60000:null;
     rows.push({
       id:'PT'+(1000+i), test:tests[i%tests.length],
+      patientType: i%5===0 ? 'Inpatient' : 'ED',
       tOrder, tCollect, tReceive, tVerify,
       s1:Math.round(s1*10)/10, s2:Math.round(s2*10)/10,
       s3:tVerify?Math.round(s3*10)/10:null,
@@ -567,9 +586,10 @@ function loadSample(){
     });
   }
   rawData = rows;
+  document.getElementById('filterPatientType').value = 'ED';
   applyFilters();
   populateTestFilter();
-  showToast('✓ Sample data loaded — 120 records');
+  showToast('✓ Sample data loaded — 120 records (ED filter active)');
   show('liveStatus');
   hide('uploadSection');
 }
@@ -584,8 +604,10 @@ document.getElementById('fileInput').addEventListener('change', function(e){
     rawData = parseRows(ws);
     if(!rawData.length){ showToast('⚠ No valid rows found. Check column headers.'); return; }
     populateTestFilter();
+    document.getElementById('filterPatientType').value = 'ED';
     applyFilters();
-    showToast(`✓ Loaded ${rawData.length} records from ${file.name}`);
+    const edCount = rawData.filter(r=>r.patientType==='ED').length;
+    showToast(`✓ Loaded ${rawData.length} records — showing ${edCount} ED`);
     show('liveStatus');
     hide('uploadSection');
   };
@@ -610,10 +632,11 @@ function populateTestFilter(){
 }
 
 function applyFilters(){
-  const from = document.getElementById('filterFrom').value;
-  const to   = document.getElementById('filterTo').value;
-  const test = document.getElementById('filterTest').value;
-  const sla  = document.getElementById('filterSLA').value;
+  const from        = document.getElementById('filterFrom').value;
+  const to          = document.getElementById('filterTo').value;
+  const test        = document.getElementById('filterTest').value;
+  const sla         = document.getElementById('filterSLA').value;
+  const patientType = document.getElementById('filterPatientType').value;
   filteredData = rawData.filter(r=>{
     if(from && r.tOrder && r.tOrder < new Date(from)) return false;
     if(to   && r.tOrder && r.tOrder > new Date(to+'T23:59:59')) return false;
@@ -621,6 +644,7 @@ function applyFilters(){
     if(sla==='ok' && (r.total==null||r.total>60)) return false;
     if(sla==='over' && (r.total==null||r.total<=60)) return false;
     if(sla==='missing' && !r.missing) return false;
+    if(patientType && r.patientType !== patientType) return false;
     return true;
   });
   renderAll();
@@ -630,6 +654,7 @@ function resetFilters(){
   ['filterFrom','filterTo'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('filterTest').value='';
   document.getElementById('filterSLA').value='';
+  document.getElementById('filterPatientType').value='ED';
   applyFilters();
 }
 
