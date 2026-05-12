@@ -498,43 +498,48 @@ function downloadExcel() {
 
   const fromD = info.startDate || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>a-b)[0];
   const toD   = info.endDate   || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>b-a)[0];
-  const fromStr = fromD ? fmtDate(fromD) : '';
-  const toStr   = toD   ? fmtDate(toD)   : '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const adaaDate = d => d ? `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}` : '';
+
+  const fromStr = adaaDate(fromD);
+  const toStr   = adaaDate(toD);
 
   const wb = XLSX.utils.book_new();
 
-  // Build AOA matching the ADAA template layout
+  // Build AOA matching the ADAA template layout (verified against actual example file)
   const aoa = [];
 
   // Row 1: empty
   aoa.push([]);
 
-  // Row 2: title
-  aoa.push(['', '', '', 'Unified Data Collection Sheet']);
+  // Row 2: title in C2 (template merges C2:G2)
+  aoa.push(['', '', 'Unified Data Collection Sheet']);
 
   // Rows 3-7: empty
   for (let i = 0; i < 5; i++) aoa.push([]);
 
-  // Row 8: period header — B=label, C=value, D=label, E=value, F=label, G=value
+  // Row 8: B=Date(From) label, C=value, D=Date(To) label, E=value, F=blank (merged E:F), G=Service label, H=value
   aoa.push([
     '',
     'Date (From)\nالتاريخ - من', fromStr,
     'Date (To)\nالتاريخ - إلى', toStr,
+    '',
     'Service\nالخدمة', 'Blood Bank /بنك الدم'
   ]);
 
-  // Row 9: facility info — B=label, C=value, D=label, E=value, F=label, G=value
+  // Row 9: B=Facility label, C=value, D=City label, E=value, F=blank (merged E:F), G=Directorate label, H=value
   aoa.push([
     '',
     'Facility Name\nاسم المنشأة', info.facility || '',
     'City\nالمدينة', info.region || '',
+    '',
     'Directorate\nالمديرية', ''
   ]);
 
   // Row 10: empty
   aoa.push([]);
 
-  // Row 11: column headers
+  // Row 11: column headers (B=#, C=Visit Date, D=Name, E=Mobile, F=Gender, G=Age, H=Nationality, I=Blood Group, J=Donation Type, K=Bag No.)
   aoa.push([
     '',
     '#',
@@ -549,9 +554,11 @@ function downloadExcel() {
     'Bag Number\nرقم الكيس'
   ]);
 
-  // Data rows from row 12
+  // Data rows from row 12: date as "DD-Mon-YYYY" text, age as "X Years"
   donors.forEach((d, i) => {
-    aoa.push(['', i + 1, d.donDateStr, d.fullName, d.phone, d.gender, d.age, d.nationality, d.bloodGroup, d.donationType, d.bagNumber]);
+    const ageStr = d.age ? `${d.age} Years` : '';
+    const dateStr = adaaDate(d.donDate) || d.donDateStr || '';
+    aoa.push(['', i + 1, dateStr, d.fullName, d.phone, d.gender, ageStr, d.nationality, d.bloodGroup, d.donationType, d.bagNumber]);
   });
 
   const ws = XLSX.utils.aoa_to_sheet(aoa);
