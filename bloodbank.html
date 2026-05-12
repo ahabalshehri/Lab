@@ -286,17 +286,15 @@ function parseDate(v) {
   return null;
 }
 
+const _months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function fmtDate(d) {
   if (!d) return '';
-  const dd = String(d.getDate()).padStart(2,'0');
-  const mm = String(d.getMonth()+1).padStart(2,'0');
-  const yyyy = d.getFullYear();
-  return `${dd}/${mm}/${yyyy}`;
+  return `${String(d.getDate()).padStart(2,'0')}-${_months[d.getMonth()]}-${d.getFullYear()}`;
 }
 
 function fmtDateShort(d) {
   if (!d) return '--';
-  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+  return `${String(d.getDate()).padStart(2,'0')}-${_months[d.getMonth()]}-${d.getFullYear()}`;
 }
 
 function calcAge(dob, ref) {
@@ -479,8 +477,8 @@ function renderResults(filename) {
   document.getElementById('periodTo').textContent   = toD   ? fmtDateShort(toD)   : '--';
 
   // Filename
-  const from = fromD ? fmtDateShort(fromD).replace(/\//g,'-') : 'from';
-  const to   = toD   ? fmtDateShort(toD).replace(/\//g,'-')   : 'to';
+  const from = fromD ? fmtDateShort(fromD) : 'from';
+  const to   = toD   ? fmtDateShort(toD)   : 'to';
   const fname = `ADAA Blood Bank ${from} - ${to}.xlsx`;
   document.getElementById('downloadFilename').textContent = fname;
   document.getElementById('downloadDesc').textContent = `${donors.length} donors · Blood Bank template format`;
