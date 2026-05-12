@@ -312,8 +312,8 @@ function parseWateen(wb) {
     }
   }
 
-  // Wateen fixed layout: row 14 = header (index 13), data from row 15 (index 14)
-  const headerRow = 13;
+  // Wateen fixed layout: row 13 = header (index 12), data from row 14 (index 13)
+  const headerRow = 12;
 
   // Map columns dynamically from header row
   const headers = json[headerRow].map(h => String(h).toLowerCase().replace(/\s+/g, ' ').trim());
@@ -356,7 +356,7 @@ function parseWateen(wb) {
   if (iCollPt  === -1) iCollPt  = 11;
 
   const donors = [];
-  for (let r = 14; r < json.length; r++) {
+  for (let r = 13; r < json.length; r++) {
     const row = json[r];
     const firstName = String(row[iFirst] ?? '').trim();
     const lastName  = String(row[iLast]  ?? '').trim();
