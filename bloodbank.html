@@ -392,7 +392,11 @@ function parseWateen(wb) {
     });
   }
 
-  return { info, donors };
+  // Debug: expose parse state so caller can show useful error
+  const _sample = json[headerRow + 1]
+    ? json[headerRow + 1].slice(0, 3).map(c => String(c).trim()).join(' | ')
+    : 'no row after header';
+  return { info, donors, _hdr: headerRow, _len: json.length, _sample };
 }
 
 /* ── PROCESS FILE ── */
@@ -403,7 +407,8 @@ function processFile(file) {
       const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: false });
       const parsed = parseWateen(wb);
       if (!parsed.donors.length) {
-        showToast('⚠ No donor rows found. Check the file format.');
+        const dbg = parsed.debug || `headerRow=${parsed._hdr ?? '?'}, jsonLen=${parsed._len ?? '?'}, sample="${parsed._sample ?? ''}"`;
+        showToast(`⚠ No donor rows found. ${dbg}`);
         return;
       }
       reportData = parsed;
