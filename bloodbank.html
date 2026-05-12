@@ -506,22 +506,50 @@ function downloadExcel() {
   // Build AOA matching the ADAA template layout
   const aoa = [];
 
-  // Rows 1-7: empty
-  for (let i = 0; i < 7; i++) aoa.push([]);
+  // Row 1: empty
+  aoa.push([]);
 
-  // Row 8 (index 7): period header
-  aoa.push(['', 'Date (From)\nالتاريخ - من', fromStr, 'Date (To)\nالتاريخ - إلى', toStr, '', 'Service\n الخدمة', 'Blood Bank /بنك الدم']);
+  // Row 2: title
+  aoa.push(['', '', '', 'Unified Data Collection Sheet']);
 
-  // Row 9 (index 8): facility info
-  aoa.push(['', 'Facility Name\nاسم المنشأة', info.facility || '', 'City\n المدينة', info.region || '', '', 'Directorate\nالمديرية', '']);
+  // Rows 3-7: empty
+  for (let i = 0; i < 5; i++) aoa.push([]);
+
+  // Row 8: period header — B=label, C=value, D=label, E=value, F=label, G=value
+  aoa.push([
+    '',
+    'Date (From)\nالتاريخ - من', fromStr,
+    'Date (To)\nالتاريخ - إلى', toStr,
+    'Service\nالخدمة', 'Blood Bank /بنك الدم'
+  ]);
+
+  // Row 9: facility info — B=label, C=value, D=label, E=value, F=label, G=value
+  aoa.push([
+    '',
+    'Facility Name\nاسم المنشأة', info.facility || '',
+    'City\nالمدينة', info.region || '',
+    'Directorate\nالمديرية', ''
+  ]);
 
   // Row 10: empty
   aoa.push([]);
 
-  // Row 11 (index 10): column headers
-  aoa.push(['', '#', 'D/C or Visit Date\nتاريخ الخروج / الزيارة', 'Patient / Guardian Name\nاسم المريض / ولي أمر المريض', 'Mobile Number\nرقم الجوال', 'Gender\nالجنس', 'Age\nالعمر', 'Nationality\n الجنسية', 'Blood Group\nفصيلة الدم', 'Donation Type\nنوع التبرع', 'Bag Number\nرقم الكيس']);
+  // Row 11: column headers
+  aoa.push([
+    '',
+    '#',
+    'D/C or Visit Date\nتاريخ الخروج / الزيارة',
+    'Patient / Guardian Name\nاسم المريض / ولي أمر المريض',
+    'Mobile Number\nرقم الجوال',
+    'Gender\nالجنس',
+    'Age\nالعمر',
+    'Nationality\nالجنسية',
+    'Blood Group\nفصيلة الدم',
+    'Donation Type\nنوع التبرع',
+    'Bag Number\nرقم الكيس'
+  ]);
 
-  // Data rows
+  // Data rows from row 12
   donors.forEach((d, i) => {
     aoa.push(['', i + 1, d.donDateStr, d.fullName, d.phone, d.gender, d.age, d.nationality, d.bloodGroup, d.donationType, d.bagNumber]);
   });
@@ -531,16 +559,16 @@ function downloadExcel() {
   // Set column widths
   ws['!cols'] = [
     { wch: 3 },   // A - empty
-    { wch: 5 },   // B - #
-    { wch: 16 },  // C - date
-    { wch: 32 },  // D - name
+    { wch: 6 },   // B - #
+    { wch: 18 },  // C - date
+    { wch: 34 },  // D - name
     { wch: 16 },  // E - mobile
-    { wch: 8 },   // F - gender
-    { wch: 6 },   // G - age
+    { wch: 10 },  // F - gender
+    { wch: 7 },   // G - age
     { wch: 18 },  // H - nationality
-    { wch: 12 },  // I - blood group
-    { wch: 16 },  // J - donation type
-    { wch: 20 },  // K - bag number
+    { wch: 13 },  // I - blood group
+    { wch: 18 },  // J - donation type
+    { wch: 22 },  // K - bag number
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, 'Blood Bank');
