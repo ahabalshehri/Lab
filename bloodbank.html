@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADAA Blood Bank — Weekly Report</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0f1623; --bg2: #161e2e; --bg3: #1d2840;
+  --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+  --text: #e8edf5; --muted: #6b7a99;
+  --red: #ef4444; --redlight: rgba(239,68,68,0.12);
+  --green: #10b981; --greenlight: rgba(16,185,129,0.12);
+  --amber: #f59e0b;
+  --accent: #e11d48; --accent2: #fb7185;
+  --radius: 12px; --radius-sm: 8px;
+  --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; min-height: 100vh; }
+
+header {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  padding: 0 24px; display: flex; align-items: center; justify-content: space-between;
+  height: 60px; position: sticky; top: 0; z-index: 100;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.logo-text { font-size: 15px; font-weight: 600; }
+.logo-sub { font-size: 11px; color: var(--muted); }
+.nav-link { font-size: 13px; color: var(--muted); text-decoration: none; padding: 6px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); transition: color .15s, border-color .15s; }
+.nav-link:hover { color: var(--text); border-color: rgba(255,255,255,.2); }
+
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); transition: all .15s; }
+.btn:hover { background: var(--bg2); border-color: rgba(255,255,255,.2); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: #be123c; border-color: #be123c; }
+.btn svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+.main { max-width: 1100px; margin: 0 auto; padding: 28px 20px 64px; }
+.section { margin-bottom: 28px; }
+.section-title { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+.upload-zone { border: 2px dashed var(--border2); border-radius: var(--radius); padding: 48px 24px; text-align: center; cursor: pointer; background: var(--bg2); transition: all .2s; }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(225,29,72,.04); }
+.upload-icon { font-size: 40px; display: block; margin-bottom: 12px; }
+.upload-zone h3 { font-size: 16px; font-weight: 500; margin-bottom: 6px; }
+.upload-zone p { color: var(--muted); font-size: 13px; }
+.upload-zone p.hint { margin-top: 10px; font-size: 12px; }
+#fileInput { display: none; }
+.upload-actions { display: flex; gap: 10px; justify-content: center; margin-top: 18px; }
+
+.info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.info-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.info-card.accent { border-top: 2px solid var(--accent); }
+.info-label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.info-value { font-size: 20px; font-weight: 600; font-family: var(--mono); }
+.info-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.blood-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.blood-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; }
+.blood-type { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--accent2); }
+.blood-count { font-size: 22px; font-weight: 600; margin: 4px 0; }
+.blood-pct { font-size: 11px; color: var(--muted); }
+
+.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { background: var(--bg3); padding: 9px 12px; text-align: left; font-size: 10px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 11px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+.download-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); }
+.download-info strong { display: block; font-size: 14px; font-weight: 500; }
+.download-info span { font-size: 12px; color: var(--muted); }
+
+.notice { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 12px; margin-bottom: 16px; }
+.notice.warn { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.2); color: #fbbf24; }
+.notice.ok { background: var(--greenlight); border: 1px solid rgba(16,185,129,.2); color: #34d399; }
+
+.toast { position: fixed; bottom: 20px; right: 20px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 13px; z-index: 999; display: none; box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+.toast.show { display: block; animation: slideUp .2s ease; }
+@keyframes slideUp { from{transform:translateY(10px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+
+.empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+@media (max-width: 600px) {
+  header { padding: 0 14px; }
+  .main { padding: 16px 12px; }
+  .download-bar { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🩸</div>
+    <div>
+      <div class="logo-text">ADAA Blood Bank</div>
+      <div class="logo-sub">Weekly Donor Report</div>
+    </div>
+  </div>
+  <a href="index.html" class="nav-link">← ER TAT Dashboard</a>
+</header>
+
+<div class="main">
+
+  <!-- UPLOAD -->
+  <div id="uploadSection" class="section">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <span class="upload-icon">📂</span>
+      <h3>Upload Wateen Weekly Report</h3>
+      <p>Drag & drop or click to browse — .xls or .xlsx accepted</p>
+      <p class="hint" style="color:var(--muted)">Expected format: Wateen donor report with First Name, Last Name, DOB, Nationality, Phone, Gender, Blood Group, Donation Date columns</p>
+      <div class="upload-actions" onclick="event.stopPropagation()">
+        <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+          Upload Report
+        </button>
+      </div>
+    </div>
+    <input type="file" id="fileInput" accept=".xls,.xlsx">
+  </div>
+
+  <!-- RESULTS (hidden until data loaded) -->
+  <div id="resultsSection" style="display:none">
+
+    <div class="section">
+      <div class="section-title">Report info</div>
+      <div class="info-grid">
+        <div class="info-card accent">
+          <div class="info-label">Total Donors</div>
+          <div class="info-value" id="totalDonors">0</div>
+          <div class="info-sub">Valid records</div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Period From</div>
+          <div class="info-value" id="periodFrom">--</div>
+          <div class="info-sub" id="periodFromLabel"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Period To</div>
+          <div class="info-value" id="periodTo">--</div>
+          <div class="info-sub" id="periodToLabel"></div>
+        </div>
+        <div class="info-card">
+          <div class="info-label">Facility</div>
+          <div class="info-value" style="font-size:13px;line-height:1.4" id="facilityName">--</div>
+          <div class="info-sub" id="facilityRegion"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Blood group distribution</div>
+      <div class="blood-grid" id="bloodGrid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Preview — first 20 records</div>
+      <div id="previewNotice"></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Donation Date</th>
+              <th>Full Name</th>
+              <th>Mobile</th>
+              <th>Gender</th>
+              <th>Age</th>
+              <th>Nationality</th>
+              <th>Blood Group</th>
+              <th>Donation Type</th>
+            </tr>
+          </thead>
+          <tbody id="previewTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="download-bar">
+        <div class="download-info">
+          <strong id="downloadFilename">ADAA Blood Bank Report.xlsx</strong>
+          <span id="downloadDesc">Formatted for ADAA template</span>
+        </div>
+        <button class="btn btn-primary" id="downloadBtn" onclick="downloadExcel()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Formatted Excel
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let reportData = null;
+
+function showToast(msg, dur=2800){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+/* ── DRAG & DROP ── */
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+});
+document.getElementById('fileInput').addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+/* ── PARSE DATE ── */
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return isNaN(d) ? null : d;
+  }
+  const s = String(v).trim();
+  const d = new Date(s);
+  if (!isNaN(d)) return d;
+  // try DD-Mon-YY
+  const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  if (m) {
+    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const mo = months[m[2].toLowerCase()];
+    let yr = parseInt(m[3]);
+    if (yr < 100) yr += yr < 30 ? 2000 : 1900;
+    return new Date(yr, mo, parseInt(m[1]));
+  }
+  return null;
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+function fmtDateShort(d) {
+  if (!d) return '--';
+  return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+}
+
+function calcAge(dob, ref) {
+  if (!dob || !ref) return '';
+  let age = ref.getFullYear() - dob.getFullYear();
+  const m = ref.getMonth() - dob.getMonth();
+  if (m < 0 || (m === 0 && ref.getDate() < dob.getDate())) age--;
+  return (age > 0 && age < 120) ? age : '';
+}
+
+function cleanPhone(v) {
+  return String(v || '').replace(/\/+\s*$/, '').trim();
+}
+
+function normalizeGender(v) {
+  const s = String(v || '').trim().toUpperCase();
+  if (s === 'M' || s === 'MALE') return 'Male';
+  if (s === 'F' || s === 'FEMALE') return 'Female';
+  return v || '';
+}
+
+function titleCase(s) {
+  return String(s || '').trim().replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+/* ── PARSE WATEEN FILE ── */
+function parseWateen(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+  const info = {
+    facility: String(json[0]?.[0] || '').trim(),
+    region: String(json[1]?.[0] || '').trim(),
+    startDate: null,
+    endDate: null,
+  };
+
+  // Find date row (has "Start Date" in col 0)
+  for (let r = 0; r < Math.min(20, json.length); r++) {
+    const row = json[r];
+    if (String(row[0]).toLowerCase().includes('start date')) {
+      // Col 1 = ": 1/04/2026" style
+      const sd = String(row[1] || '').replace(/^:\s*/, '').trim();
+      const ed = String(row[3] || '').replace(/^:\s*/, '').trim();
+      info.startDate = parseDate(sd);
+      info.endDate = parseDate(ed);
+      break;
+    }
+  }
+
+  // Find header row (has "First Name" or "First" in col 0)
+  let headerRow = -1;
+  for (let r = 0; r < Math.min(20, json.length); r++) {
+    const cell = String(json[r]?.[0] || '').toLowerCase();
+    if (cell.includes('first') || cell.includes('اسم')) {
+      headerRow = r;
+      break;
+    }
+  }
+  if (headerRow === -1) return { info, donors: [] };
+
+  // Map column indices from header row
+  const headers = json[headerRow].map(h => String(h).toLowerCase());
+  const col = (patterns) => {
+    for (const p of patterns) {
+      const i = headers.findIndex(h => p.test(h));
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
+
+  const iFirst    = col([/first\s*name/, /^first$/]);
+  const iLast     = col([/last\s*name/, /^last$/]);
+  const iDob      = col([/dob/, /date.*birth/, /birth/]);
+  const iNat      = col([/national.*id/, /iqama/, /id\s*or/]);
+  const iNation   = col([/nationality/, /جنسية/]);
+  const iPhone    = col([/phone/, /mobile/, /جوال/]);
+  const iGender   = col([/gender/, /جنس/]);
+  const iBlood    = col([/blood.*group/, /blood.*type/, /فصيلة/]);
+  const iBag      = col([/bag/, /كيس/]);
+  const iDonType  = col([/donation.*type/, /type.*donation/, /نوع.*تبر/]);
+  const iDonDate  = col([/donation.*date/, /date.*donation/, /تاريخ.*تبر/]);
+  const iCollPt   = col([/collection.*point/, /مكان.*تبر/]);
+
+  const donors = [];
+  for (let r = headerRow + 1; r < json.length; r++) {
+    const row = json[r];
+    const firstName = String(row[iFirst] ?? '').trim();
+    const lastName  = String(row[iLast]  ?? '').trim();
+    if (!firstName && !lastName) continue;
+
+    const dobRaw  = iDob >= 0  ? row[iDob]  : '';
+    const donRaw  = iDonDate >= 0 ? row[iDonDate] : '';
+    const dob     = parseDate(dobRaw);
+    const donDate = parseDate(donRaw);
+
+    donors.push({
+      seq: donors.length + 1,
+      fullName: titleCase(`${firstName} ${lastName}`).trim(),
+      nationalId: iNat >= 0 ? String(row[iNat] ?? '').trim() : '',
+      nationality: iNation >= 0 ? titleCase(String(row[iNation] ?? '')) : '',
+      phone: iPhone >= 0 ? cleanPhone(row[iPhone]) : '',
+      gender: iGender >= 0 ? normalizeGender(row[iGender]) : '',
+      dob,
+      age: calcAge(dob, donDate || new Date()),
+      bloodGroup: iBlood >= 0 ? String(row[iBlood] ?? '').trim() : '',
+      donationType: iDonType >= 0 ? String(row[iDonType] ?? '').trim() : '',
+      donDate,
+      donDateStr: fmtDate(donDate),
+      bagNumber: iBag >= 0 ? String(row[iBag] ?? '').trim() : '',
+      collectionPoint: iCollPt >= 0 ? String(row[iCollPt] ?? '').trim() : '',
+    });
+  }
+
+  return { info, donors };
+}
+
+/* ── PROCESS FILE ── */
+function processFile(file) {
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array', cellDates: false });
+      const parsed = parseWateen(wb);
+      if (!parsed.donors.length) {
+        showToast('⚠ No donor rows found. Check the file format.');
+        return;
+      }
+      reportData = parsed;
+      renderResults(file.name);
+      showToast(`✓ Loaded ${parsed.donors.length} donor records`);
+      document.getElementById('uploadSection').style.display = 'none';
+      document.getElementById('resultsSection').style.display = '';
+    } catch(e) {
+      showToast('⚠ Could not read file: ' + e.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ── RENDER ── */
+function renderResults(filename) {
+  const { info, donors } = reportData;
+
+  // Info cards
+  document.getElementById('totalDonors').textContent = donors.length;
+  document.getElementById('facilityName').textContent = info.facility || 'Unknown';
+  document.getElementById('facilityRegion').textContent = info.region || '';
+
+  const fromD = info.startDate || (donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>a-b)[0]);
+  const toD   = info.endDate   || (donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>b-a)[0]);
+  document.getElementById('periodFrom').textContent = fromD ? fmtDateShort(fromD) : '--';
+  document.getElementById('periodTo').textContent   = toD   ? fmtDateShort(toD)   : '--';
+
+  // Filename
+  const from = fromD ? fmtDateShort(fromD).replace(/\//g,'-') : 'from';
+  const to   = toD   ? fmtDateShort(toD).replace(/\//g,'-')   : 'to';
+  const fname = `ADAA Blood Bank ${from} - ${to}.xlsx`;
+  document.getElementById('downloadFilename').textContent = fname;
+  document.getElementById('downloadDesc').textContent = `${donors.length} donors · Blood Bank template format`;
+
+  // Blood group grid
+  const groups = {};
+  donors.forEach(d => {
+    const bg = d.bloodGroup || 'Unknown';
+    groups[bg] = (groups[bg] || 0) + 1;
+  });
+  const total = donors.length;
+  const order = ['O pos','O neg','A pos','A neg','B pos','B neg','AB pos','AB neg'];
+  const sorted = [...Object.entries(groups)].sort((a,b) => {
+    const ai = order.indexOf(a[0]), bi = order.indexOf(b[0]);
+    if (ai >= 0 && bi >= 0) return ai - bi;
+    if (ai >= 0) return -1;
+    if (bi >= 0) return 1;
+    return b[1] - a[1];
+  });
+  document.getElementById('bloodGrid').innerHTML = sorted.map(([bg, cnt]) =>
+    `<div class="blood-card">
+      <div class="blood-type">${bg}</div>
+      <div class="blood-count">${cnt}</div>
+      <div class="blood-pct">${((cnt/total)*100).toFixed(1)}%</div>
+    </div>`
+  ).join('');
+
+  // Preview table
+  const preview = donors.slice(0, 20);
+  document.getElementById('previewTable').innerHTML = preview.map(d => `
+    <tr>
+      <td>${d.seq}</td>
+      <td>${d.donDateStr || '--'}</td>
+      <td style="min-width:160px">${d.fullName}</td>
+      <td>${d.phone}</td>
+      <td>${d.gender}</td>
+      <td>${d.age}</td>
+      <td>${d.nationality}</td>
+      <td style="color:var(--accent2);font-weight:600">${d.bloodGroup}</td>
+      <td>${d.donationType}</td>
+    </tr>`).join('');
+
+  if (donors.length > 20) {
+    document.getElementById('previewNotice').innerHTML =
+      `<div class="notice warn">Showing first 20 of ${donors.length} records. All records are included in the download.</div>`;
+  } else {
+    document.getElementById('previewNotice').innerHTML = '';
+  }
+}
+
+/* ── DOWNLOAD EXCEL ── */
+function downloadExcel() {
+  if (!reportData) return;
+  const { info, donors } = reportData;
+
+  const fromD = info.startDate || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>a-b)[0];
+  const toD   = info.endDate   || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>b-a)[0];
+  const fromStr = fromD ? fmtDate(fromD) : '';
+  const toStr   = toD   ? fmtDate(toD)   : '';
+
+  const wb = XLSX.utils.book_new();
+
+  // Build AOA matching the ADAA template layout
+  const aoa = [];
+
+  // Rows 1-7: empty
+  for (let i = 0; i < 7; i++) aoa.push([]);
+
+  // Row 8 (index 7): period header
+  aoa.push(['', 'Date (From)\nالتاريخ - من', fromStr, 'Date (To)\nالتاريخ - إلى', toStr, '', 'Service\n الخدمة', 'Blood Bank /بنك الدم']);
+
+  // Row 9 (index 8): facility info
+  aoa.push(['', 'Facility Name\nاسم المنشأة', info.facility || '', 'City\n المدينة', info.region || '', '', 'Directorate\nالمديرية', '']);
+
+  // Row 10: empty
+  aoa.push([]);
+
+  // Row 11 (index 10): column headers
+  aoa.push(['', '#', 'D/C or Visit Date\nتاريخ الخروج / الزيارة', 'Patient / Guardian Name\nاسم المريض / ولي أمر المريض', 'Mobile Number\nرقم الجوال', 'Gender\nالجنس', 'Age\nالعمر', 'Nationality\n الجنسية', 'Blood Group\nفصيلة الدم', 'Donation Type\nنوع التبرع', 'Bag Number\nرقم الكيس']);
+
+  // Data rows
+  donors.forEach((d, i) => {
+    aoa.push(['', i + 1, d.donDateStr, d.fullName, d.phone, d.gender, d.age, d.nationality, d.bloodGroup, d.donationType, d.bagNumber]);
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 3 },   // A - empty
+    { wch: 5 },   // B - #
+    { wch: 16 },  // C - date
+    { wch: 32 },  // D - name
+    { wch: 16 },  // E - mobile
+    { wch: 8 },   // F - gender
+    { wch: 6 },   // G - age
+    { wch: 18 },  // H - nationality
+    { wch: 12 },  // I - blood group
+    { wch: 16 },  // J - donation type
+    { wch: 20 },  // K - bag number
+  ];
+
+  XLSX.utils.book_append_sheet(wb, ws, 'Blood Bank');
+
+  const from = fromD ? fmtDateShort(fromD).replace(/\//g,'-') : 'from';
+  const to   = toD   ? fmtDateShort(toD).replace(/\//g,'-')   : 'to';
+  const fname = `ADAA Blood Bank ${from} - ${to}.xlsx`;
+
+  XLSX.writeFile(wb, fname);
+  showToast(`✓ Downloaded: ${fname}`);
+}
+</script>
+</body>
+</html>
