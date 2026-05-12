@@ -294,20 +294,15 @@ function parseWateen(wb) {
 
   const info = { facility: '', region: '', startDate: null, endDate: null };
 
-  // Scan all rows (up to 40) for metadata and header
-  let headerRow = -1;
-  for (let r = 0; r < Math.min(40, json.length); r++) {
+  // Scan metadata rows 0-12 for facility name and date range
+  for (let r = 0; r < Math.min(13, json.length); r++) {
     const row = json[r];
-    // Facility: first non-empty row with a string value
     if (!info.facility) {
       const v = String(row[0] || '').trim();
       if (v && !/^\d+$/.test(v)) info.facility = v;
     }
-
-    // Date row: any cell in row contains "start date"
     const rowText = row.map(c => String(c).toLowerCase()).join(' ');
     if (!info.startDate && rowText.includes('start date')) {
-      // values follow the key in the same row: "Start Date" | ": 1/04/2026" | "End date" | ": 11/05/2026"
       for (let c = 0; c < row.length - 1; c++) {
         const k = String(row[c]).toLowerCase();
         const v = String(row[c + 1] || '').replace(/^[:\s]+/, '').trim();
@@ -315,27 +310,10 @@ function parseWateen(wb) {
         if (k.includes('end') && v)   info.endDate   = parseDate(v);
       }
     }
-
-    // Header row: row where any cell contains "first name" / "first" + "last"
-    if (headerRow === -1 && rowText.includes('first') && (rowText.includes('last') || rowText.includes('name'))) {
-      // Verify it really looks like a header (not a data row)
-      const hasBlood  = rowText.includes('blood') || rowText.includes('فصيل');
-      const hasDonate = rowText.includes('donat') || rowText.includes('تبر');
-      if (hasBlood || hasDonate || rowText.includes('gender') || rowText.includes('dob')) {
-        headerRow = r;
-      }
-    }
   }
 
-  // Fallback: if still no header, try known Wateen fixed layout (header on row index 12)
-  if (headerRow === -1) {
-    for (let r = 10; r < Math.min(16, json.length); r++) {
-      const row = json[r];
-      if (row.filter(c => String(c).trim()).length >= 6) { headerRow = r; break; }
-    }
-  }
-
-  if (headerRow === -1) return { info, donors: [], debug: `Could not find header row in first 40 rows` };
+  // Wateen fixed layout: row 14 = header (index 13), data from row 15 (index 14)
+  const headerRow = 13;
 
   // Map columns dynamically from header row
   const headers = json[headerRow].map(h => String(h).toLowerCase().replace(/\s+/g, ' ').trim());
@@ -378,7 +356,7 @@ function parseWateen(wb) {
   if (iCollPt  === -1) iCollPt  = 11;
 
   const donors = [];
-  for (let r = headerRow + 1; r < json.length; r++) {
+  for (let r = 14; r < json.length; r++) {
     const row = json[r];
     const firstName = String(row[iFirst] ?? '').trim();
     const lastName  = String(row[iLast]  ?? '').trim();
