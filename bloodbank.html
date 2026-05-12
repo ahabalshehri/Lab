@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ADAA Blood Bank — Weekly Report</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx-js-style.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <style>
 :root {
   --bg: #0f1623; --bg2: #161e2e; --bg3: #1d2840;
@@ -192,7 +193,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
           <strong id="downloadFilename">ADAA Blood Bank Report.xlsx</strong>
           <span id="downloadDesc">Formatted for ADAA template</span>
         </div>
-        <button class="btn btn-primary" id="downloadBtn" onclick="downloadExcel()">
+        <button class="btn btn-primary" id="downloadBtn" onclick="downloadExcel().catch(e=>showToast('⚠ '+e.message,5000))">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Download Formatted Excel
         </button>
@@ -492,7 +493,7 @@ function renderResults(filename) {
 }
 
 /* ── DOWNLOAD EXCEL ── */
-function downloadExcel() {
+async function downloadExcel() {
   if (!reportData) return;
   const { info, donors } = reportData;
 
@@ -500,121 +501,99 @@ function downloadExcel() {
   const toD   = info.endDate   || donors.map(d=>d.donDate).filter(Boolean).sort((a,b)=>b-a)[0];
   const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const adaaDate = d => d ? `${String(d.getDate()).padStart(2,'0')}-${months[d.getMonth()]}-${d.getFullYear()}` : '';
-
   const fromStr = adaaDate(fromD);
   const toStr   = adaaDate(toD);
 
-  // ── AOA (columns A–H only) ──────────────────────────────────────────
-  const aoa = [
-    [],                                                                   // row 1
-    ['', '', 'Unified Data Collection Sheet'],                            // row 2
-    [], [], [], [], [],                                                   // rows 3-7
-    ['', 'Date (From)\nالتاريخ - من', fromStr,                           // row 8
-         'Date (To)\nالتاريخ - إلى',  toStr,
-         '', 'Service\nالخدمة', 'Blood Bank /بنك الدم'],
-    ['', 'Facility Name\nاسم المنشأة', info.facility || '',              // row 9
-         'City\nالمدينة', info.region || '',
-         '', 'Directorate\nالمديرية', ''],
-    [],                                                                   // row 10
-    ['', '#',                                                             // row 11
-         'D/C or Visit Date\nتاريخ الخروج / الزيارة',
-         'Patient / Guardian Name\nاسم المريض / ولي أمر المريض',
-         'Mobile Number\nرقم الجوال',
-         'Gender\nالجنس',
-         'Age\nالعمر',
-         'Nationality\nالجنسية'],
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet('Blood Bank');
+
+  // Column widths A-H
+  ws.columns = [
+    { width: 3 },
+    { width: 5 },
+    { width: 16 },
+    { width: 34 },
+    { width: 15 },
+    { width: 10 },
+    { width: 12 },
+    { width: 20 },
   ];
+
+  // Rows 1-11 (header area)
+  ws.addRow([]);  // 1
+  ws.addRow(['', '', 'Unified Data Collection Sheet', '', '', '', '', '']);  // 2
+  ws.addRow([]);  // 3
+  ws.addRow([]);  // 4
+  ws.addRow([]);  // 5
+  ws.addRow([]);  // 6
+  ws.addRow([]);  // 7
+  ws.addRow(['', 'Date (From)\nالتاريخ - من', fromStr, 'Date (To)\nالتاريخ - إلى', toStr, '', 'Service\nالخدمة', 'Blood Bank /بنك الدم']);  // 8
+  ws.addRow(['', 'Facility Name\nاسم المنشأة', info.facility || '', 'City\nالمدينة', info.region || '', '', 'Directorate\nالمديرية', '']);  // 9
+  ws.addRow([]);  // 10
+  ws.addRow(['', '#', 'D/C or Visit Date\nتاريخ الخروج / الزيارة', 'Patient / Guardian Name\nاسم المريض / ولي أمر المريض', 'Mobile Number\nرقم الجوال', 'Gender\nالجنس', 'Age\nالعمر', 'Nationality\nالجنسية']);  // 11
+
+  // Donor data rows
   donors.forEach((d, i) => {
-    const ageStr  = d.age ? `${d.age} Years` : '';
-    const dateStr = adaaDate(d.donDate) || d.donDateStr || '';
-    aoa.push(['', i + 1, dateStr, d.fullName, d.phone, d.gender, ageStr, d.nationality]);
+    ws.addRow(['', i + 1, adaaDate(d.donDate) || d.donDateStr || '', d.fullName, d.phone, d.gender, d.age ? `${d.age} Years` : '', d.nationality]);
   });
 
-  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // Row heights
+  ws.getRow(2).height  = 22;
+  ws.getRow(8).height  = 36;
+  ws.getRow(9).height  = 36;
+  ws.getRow(11).height = 42;
 
-  // ── Styles ───────────────────────────────────────────────────────────
-  const GRN = '066641', WHT = 'FFFFFF', BLK = '000000';
-  const thin = s => ({ style: 'thin', color: { rgb: '999999' } });
-  const border = { top: thin(), bottom: thin(), left: thin(), right: thin() };
+  // Merge cells
+  ws.mergeCells('C2:H2');
+  ws.mergeCells('E8:F8');
+  ws.mergeCells('E9:F9');
 
-  const labelSt = {                          // green label cells (rows 8-9)
-    fill: { fgColor: { rgb: GRN } },
-    font: { bold: true, color: { rgb: WHT }, sz: 10, name: 'Times New Roman' },
-    alignment: { vertical: 'center', wrapText: true },
-    border
-  };
-  const valueSt = {                          // white value cells (rows 8-9)
-    font: { sz: 10, name: 'Times New Roman', color: { rgb: BLK } },
-    alignment: { vertical: 'center', wrapText: true },
-    border
-  };
-  const titleSt = {                          // row 2 title
-    font: { bold: true, sz: 14, color: { rgb: GRN }, name: 'Times New Roman' },
-    alignment: { horizontal: 'center', vertical: 'center' }
-  };
-  const hdrSt = {                            // row 11 column headers
-    fill: { fgColor: { rgb: GRN } },
-    font: { bold: true, color: { rgb: WHT }, sz: 10, name: 'Times New Roman' },
-    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-    border
-  };
-  const dataSt = {                           // data rows 12+
-    font: { sz: 10, name: 'Times New Roman', color: { rgb: BLK } },
-    alignment: { vertical: 'center', wrapText: true },
-    border
-  };
-  const numSt = {                            // # column — centered
-    font: { sz: 10, name: 'Times New Roman', color: { rgb: BLK } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    border
+  // Style helpers
+  const GRN = 'FF066641', WHT = 'FFFFFFFF', BLK = 'FF000000';
+  const thin = { style: 'thin', color: { argb: 'FF999999' } };
+  const borders = { top: thin, bottom: thin, left: thin, right: thin };
+
+  const st = (cell, fill, fontColor, bold, sz, halign, valign, wrap, border) => {
+    if (fill)      cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: fill } };
+    cell.font      = { bold: !!bold, color: { argb: fontColor }, size: sz, name: 'Times New Roman' };
+    cell.alignment = { horizontal: halign || 'left', vertical: valign || 'middle', wrapText: !!wrap };
+    if (border)    cell.border    = borders;
   };
 
-  const applyS = (ref, s) => { if (ws[ref]) ws[ref].s = s; };
+  // Title C2
+  st(ws.getCell('C2'), null, GRN, true, 14, 'center', 'middle', false, false);
 
-  applyS('C2', titleSt);
-  ['B8','D8','G8'].forEach(r => applyS(r, labelSt));
-  ['C8','E8','F8','H8'].forEach(r => applyS(r, valueSt));
-  ['B9','D9','G9'].forEach(r => applyS(r, labelSt));
-  ['C9','E9','F9','H9'].forEach(r => applyS(r, valueSt));
-  ['B11','C11','D11','E11','F11','G11','H11'].forEach(r => applyS(r, hdrSt));
+  // Row 8 labels / values
+  ['B8','D8','G8'].forEach(r => st(ws.getCell(r), GRN, WHT, true, 10, 'left', 'middle', true, true));
+  ['C8','H8'].forEach(r => st(ws.getCell(r), null, BLK, false, 10, 'left', 'middle', true, true));
+  st(ws.getCell('E8'), null, BLK, false, 10, 'left', 'middle', true, true); // merged E8:F8
 
+  // Row 9 labels / values
+  ['B9','D9','G9'].forEach(r => st(ws.getCell(r), GRN, WHT, true, 10, 'left', 'middle', true, true));
+  ['C9','H9'].forEach(r => st(ws.getCell(r), null, BLK, false, 10, 'left', 'middle', true, true));
+  st(ws.getCell('E9'), null, BLK, false, 10, 'left', 'middle', true, true); // merged E9:F9
+
+  // Row 11 column headers
+  ['B11','C11','D11','E11','F11','G11','H11'].forEach(r =>
+    st(ws.getCell(r), GRN, WHT, true, 10, 'center', 'middle', true, true));
+
+  // Data rows
   donors.forEach((_, i) => {
     const row = i + 12;
-    applyS(`B${row}`, numSt);
-    ['C','D','E','F','G','H'].forEach(c => applyS(`${c}${row}`, dataSt));
+    st(ws.getCell(`B${row}`), null, BLK, false, 10, 'center', 'middle', false, true);
+    ['C','D','E','F','G','H'].forEach(c =>
+      st(ws.getCell(`${c}${row}`), null, BLK, false, 10, 'left', 'middle', true, true));
   });
 
-  // ── Column widths (A–H) ──────────────────────────────────────────────
-  ws['!cols'] = [
-    { wch: 3 },   // A
-    { wch: 5 },   // B #
-    { wch: 16 },  // C date
-    { wch: 34 },  // D name
-    { wch: 15 },  // E mobile
-    { wch: 10 },  // F gender
-    { wch: 12 },  // G age
-    { wch: 20 },  // H nationality
-  ];
-
-  // ── Merge cells ──────────────────────────────────────────────────────
-  ws['!merges'] = [
-    { s: { r: 1, c: 2 }, e: { r: 1, c: 7 } },   // C2:H2  title
-    { s: { r: 7, c: 4 }, e: { r: 7, c: 5 } },   // E8:F8  date-to
-    { s: { r: 8, c: 4 }, e: { r: 8, c: 5 } },   // E9:F9  city
-  ];
-
-  // ── Row heights ──────────────────────────────────────────────────────
-  ws['!rows'] = [
-    {}, { hpt: 22 },                              // rows 1-2
-    {}, {}, {}, {}, {},                            // rows 3-7
-    { hpt: 36 }, { hpt: 36 }, {},                 // rows 8-10
-    { hpt: 42 },                                   // row 11
-  ];
-
-  XLSX.utils.book_append_sheet(wb, ws, 'Blood Bank');
-
+  // Generate and trigger download
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
   const fname = `ADAA Blood Bank ${fromStr || 'from'} - ${toStr || 'to'}.xlsx`;
-  XLSX.writeFile(wb, fname);
+  a.href = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
   showToast(`✓ Downloaded: ${fname}`);
 }
 </script>
