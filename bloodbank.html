@@ -272,18 +272,26 @@ function parseDate(v) {
     return isNaN(d) ? null : d;
   }
   const s = String(v).trim();
-  const d = new Date(s);
-  if (!isNaN(d)) return d;
-  // try DD-Mon-YY
-  const m = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
-  if (m) {
-    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
-    const mo = months[m[2].toLowerCase()];
-    let yr = parseInt(m[3]);
-    if (yr < 100) yr += yr < 30 ? 2000 : 1900;
-    return new Date(yr, mo, parseInt(m[1]));
+  // DD/MM/YYYY or DD-MM-YYYY — Wateen uses this format; must parse before new Date()
+  // because JS new Date() treats slash dates as MM/DD (US format)
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const [, dd, mm, yyyy] = dmy;
+    const d = new Date(parseInt(yyyy), parseInt(mm) - 1, parseInt(dd));
+    if (!isNaN(d)) return d;
   }
-  return null;
+  // DD-Mon-YYYY or DD-Mon-YY
+  const mon = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})$/);
+  if (mon) {
+    const months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    const mo = months[mon[2].toLowerCase()];
+    let yr = parseInt(mon[3]);
+    if (yr < 100) yr += yr < 30 ? 2000 : 1900;
+    return new Date(yr, mo, parseInt(mon[1]));
+  }
+  // ISO and other formats JS handles correctly
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
 }
 
 const _months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
