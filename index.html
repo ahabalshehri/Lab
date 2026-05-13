@@ -191,93 +191,39 @@ tr:hover td { background: rgba(255,255,255,.02); }
   .header-actions .btn span { display: none; }
 }
 
-/* ── PRINT ── */
+/* ── PRINT MODE (applied by JS before window.print — works without browser "Background graphics" setting) ── */
+body.printing {
+  /* Flip CSS variables to light theme — every element using var(--bg/text/etc) updates automatically */
+  --bg: #ffffff; --bg2: #f8fafc; --bg3: #f1f5f9;
+  --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.12);
+  --text: #0f172a; --muted: #64748b;
+  --redlight: rgba(239,68,68,0.15); --greenlight: rgba(16,185,129,0.15);
+}
+body.printing header  { position: static !important; height: auto !important; border-bottom: 2px solid #1e293b !important; }
+body.printing .header-actions .btn, body.printing .header-actions a { display: none !important; }
+body.printing #liveStatus button { display: none !important; }
+body.printing .badge-live span { animation: none !important; }
+body.printing .btn,
+body.printing #uploadSection,
+body.printing #filterSection,
+body.printing #aiSection   { display: none !important; }
+body.printing .main        { padding: 10px 16px !important; max-width: 100% !important; }
+body.printing .section     { margin-bottom: 14px !important; }
+body.printing .metrics-grid { grid-template-columns: repeat(4,1fr) !important; gap: 7px !important; }
+body.printing .intervals-grid { grid-template-columns: repeat(3,1fr) !important; gap: 7px !important; }
+body.printing .charts-grid  { grid-template-columns: 1fr 1fr !important; gap: 7px !important; }
+body.printing .chart-wrap   { height: 180px !important; }
+body.printing canvas        { background: #fff !important; }
+body.printing .metric-card  { padding: 10px !important; break-inside: avoid; }
+body.printing .heatmap-cell:hover { color: transparent !important; }
+body.printing .toast        { display: none !important; }
+
+/* @media print — page size / breaks (layout only, colors come from body.printing above) */
 @media print {
   @page { size: A4 landscape; margin: 12mm; }
-
-  /* Preserve all colors on color printers */
-  *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-
-  /* Base */
-  body { background: #fff !important; color: #111 !important; font-size: 10.5px; line-height: 1.5; }
-
-  /* Header */
-  header { position: static !important; background: #fff !important; border-bottom: 2px solid #1e293b !important; padding: 8px 16px !important; height: auto !important; }
-  .logo-text { color: #111 !important; }
-  .logo-sub  { color: #555 !important; }
-  .logo-icon { background: #3b82f6 !important; }
-  .badge-live { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534 !important; }
-  .badge-live span { background: #16a34a !important; animation: none !important; }
-  #liveStatus button { display: none !important; }
-  .header-actions .btn, .header-actions a { display: none !important; }
-
-  /* Hide interactive elements */
-  .btn, #uploadSection, #filterSection, #aiSection { display: none !important; }
-
-  /* Layout */
-  .main { padding: 10px 16px !important; max-width: 100% !important; }
-  .section { margin-bottom: 14px !important; }
-  .section-title { color: #475569 !important; font-size: 9px !important; }
-  .section-title::after { background: #cbd5e1 !important; }
-
-  /* Metric cards — 4 per row, preserve color-coded top stripe */
-  .metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 7px !important; }
-  .metric-card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; break-inside: avoid; padding: 10px !important; }
-  .metric-card::before { height: 3px !important; }
-  .metric-card.ok::before     { background: #10b981 !important; }
-  .metric-card.warn::before   { background: #f59e0b !important; }
-  .metric-card.bad::before    { background: #ef4444 !important; }
-  .metric-card.info::before   { background: #3b82f6 !important; }
-  .metric-card.purple::before { background: #8b5cf6 !important; }
-  .mc-label { color: #64748b !important; font-size: 9px !important; }
-  .mc-value { color: #0f172a !important; font-size: 22px !important; }
-  .mc-sub   { color: #94a3b8 !important; font-size: 10px !important; }
-  .mc-badge.ok   { background: #dcfce7 !important; color: #166534 !important; }
-  .mc-badge.warn { background: #fef3c7 !important; color: #92400e !important; }
-  .mc-badge.bad  { background: #fee2e2 !important; color: #991b1b !important; }
-
-  /* Interval cards */
-  .intervals-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 7px !important; }
-  .interval-card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; break-inside: avoid; padding: 12px !important; }
-  .interval-num    { color: #64748b !important; }
-  .interval-name   { color: #0f172a !important; }
-  .interval-target { color: #94a3b8 !important; }
-  .interval-avg    { font-size: 20px !important; }
-  .progress-bar    { background: #e2e8f0 !important; }
-
-  /* Chart cards — 2-per-row, canvas colors preserved by print-color-adjust */
-  .charts-grid { grid-template-columns: 1fr 1fr !important; gap: 7px !important; }
-  .chart-card  { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; break-inside: avoid; padding: 12px !important; page-break-inside: avoid; }
-  .chart-title { color: #0f172a !important; }
-  .chart-sub   { color: #64748b !important; }
-  .chart-wrap  { height: 180px !important; }
-
-  /* Heatmap */
-  .heatmap-label { color: #475569 !important; }
-  .heatmap-hour  { color: #475569 !important; }
-  .heatmap-cell:hover { color: transparent !important; }
-
-  /* Weakness */
-  .weakness-row  { background: #f1f5f9 !important; }
-  .weakness-name { color: #0f172a !important; }
-  .weakness-rank, .weakness-val { color: #64748b !important; }
-  .weakness-bar  { background: #e2e8f0 !important; }
-  .weakness-fill { background: #ef4444 !important; }
-
-  /* Table */
-  .table-wrap { border: 1px solid #cbd5e1 !important; }
-  th  { background: #f1f5f9 !important; color: #334155 !important; border-bottom: 1px solid #cbd5e1 !important; }
-  td  { color: #111 !important; border-bottom: 1px solid #f1f5f9 !important; }
-  tr:last-child td { border-bottom: none !important; }
-  tr:hover td { background: none !important; }
-  .td-over { color: #dc2626 !important; font-weight: 600 !important; }
-  .td-ok   { color: #059669 !important; }
-
-  /* Canvas — white background so chart elements show on paper */
-  canvas { background: #fff !important; }
-
-  /* Toast — never print */
-  .toast { display: none !important; }
+  body  { font-size: 10.5px !important; line-height: 1.5 !important; }
+  .section { break-inside: avoid; }
+  .metric-card, .chart-card, .interval-card { break-inside: avoid; page-break-inside: avoid; }
 }
 </style>
 </head>
@@ -294,7 +240,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
   <div class="header-actions">
     <a href="bloodbank.html" style="font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;border:1px solid var(--border2);border-radius:8px;margin-right:4px;transition:color .15s" onmouseover="this.style.color='#e8edf5'" onmouseout="this.style.color='#6b7a99'">🩸 Blood Bank</a>
     <div class="badge-live" id="liveStatus" style="display:none"><span></span> <span id="liveStatusText">Data loaded</span><button onclick="clearCache()" style="background:none;border:none;color:inherit;opacity:.7;cursor:pointer;margin-left:8px;font-size:11px;padding:0;line-height:1" title="Clear saved data">× clear</button></div>
-    <button class="btn" onclick="window.print()">
+    <button class="btn" onclick="doPrint()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       <span>Print</span>
     </button>
@@ -1111,10 +1057,10 @@ function clearCache(){
 // Auto-restore on load
 restoreCache();
 
-/* ── PRINT CHART THEME ── */
+/* ── PRINT ── */
 function setPrintChartTheme(forPrint) {
-  const tick = forPrint ? '#374151' : '#6b7a99';
-  const grid = forPrint ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,.05)';
+  const tick   = forPrint ? '#374151' : '#6b7a99';
+  const grid   = forPrint ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,.05)';
   const legend = forPrint ? '#111' : '#e8edf5';
   Object.values(charts).forEach(chart => {
     Object.values(chart.options.scales || {}).forEach(scale => {
@@ -1123,16 +1069,28 @@ function setPrintChartTheme(forPrint) {
     });
     const lb = chart.options.plugins?.legend?.labels;
     if (lb) lb.color = legend;
-    // Annotation / reference lines
-    const ann = chart.options.plugins?.annotation?.annotations;
-    if (ann) Object.values(ann).forEach(a => {
-      if (a.borderColor) a.borderColor = forPrint ? '#dc2626' : a._origColor || a.borderColor;
-    });
     chart.update('none');
   });
 }
-window.addEventListener('beforeprint', () => setPrintChartTheme(true));
-window.addEventListener('afterprint',  () => setPrintChartTheme(false));
+
+function doPrint() {
+  // Apply light theme and chart colors BEFORE print dialog opens
+  // so Edge renders the page in light mode — no "Background graphics" setting needed
+  document.body.classList.add('printing');
+  setPrintChartTheme(true);
+  setTimeout(() => window.print(), 200);
+}
+
+window.addEventListener('afterprint', () => {
+  document.body.classList.remove('printing');
+  setPrintChartTheme(false);
+});
+
+// Also handle Ctrl+P shortcut
+window.addEventListener('beforeprint', () => {
+  document.body.classList.add('printing');
+  setPrintChartTheme(true);
+});
 
 /* ── EXPORT CSV ── */
 function exportCSV(){
