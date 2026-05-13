@@ -193,11 +193,88 @@ tr:hover td { background: rgba(255,255,255,.02); }
 
 /* ── PRINT ── */
 @media print {
-  body { background: #fff; color: #000; font-size: 12px; }
-  header { position: static; background: #fff; border-bottom: 1px solid #ddd; }
-  .btn, .upload-zone, .filters, #aiSection { display: none !important; }
-  .metric-card, .chart-card, .interval-card { border: 1px solid #ddd; break-inside: avoid; }
-  .bg2 { background: #f9f9f9 !important; }
+  @page { size: A4 landscape; margin: 12mm; }
+
+  /* Preserve all colors on color printers */
+  *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  /* Base */
+  body { background: #fff !important; color: #111 !important; font-size: 10.5px; line-height: 1.5; }
+
+  /* Header */
+  header { position: static !important; background: #fff !important; border-bottom: 2px solid #1e293b !important; padding: 8px 16px !important; height: auto !important; }
+  .logo-text { color: #111 !important; }
+  .logo-sub  { color: #555 !important; }
+  .logo-icon { background: #3b82f6 !important; }
+  .badge-live { background: #f0fdf4 !important; border-color: #86efac !important; color: #166534 !important; }
+  .badge-live span { background: #16a34a !important; animation: none !important; }
+  #liveStatus button { display: none !important; }
+  .header-actions .btn, .header-actions a { display: none !important; }
+
+  /* Hide interactive elements */
+  .btn, #uploadSection, #filterSection, #aiSection { display: none !important; }
+
+  /* Layout */
+  .main { padding: 10px 16px !important; max-width: 100% !important; }
+  .section { margin-bottom: 14px !important; }
+  .section-title { color: #475569 !important; font-size: 9px !important; }
+  .section-title::after { background: #cbd5e1 !important; }
+
+  /* Metric cards — 4 per row, preserve color-coded top stripe */
+  .metrics-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 7px !important; }
+  .metric-card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; break-inside: avoid; padding: 10px !important; }
+  .metric-card::before { height: 3px !important; }
+  .metric-card.ok::before     { background: #10b981 !important; }
+  .metric-card.warn::before   { background: #f59e0b !important; }
+  .metric-card.bad::before    { background: #ef4444 !important; }
+  .metric-card.info::before   { background: #3b82f6 !important; }
+  .metric-card.purple::before { background: #8b5cf6 !important; }
+  .mc-label { color: #64748b !important; font-size: 9px !important; }
+  .mc-value { color: #0f172a !important; font-size: 22px !important; }
+  .mc-sub   { color: #94a3b8 !important; font-size: 10px !important; }
+  .mc-badge.ok   { background: #dcfce7 !important; color: #166534 !important; }
+  .mc-badge.warn { background: #fef3c7 !important; color: #92400e !important; }
+  .mc-badge.bad  { background: #fee2e2 !important; color: #991b1b !important; }
+
+  /* Interval cards */
+  .intervals-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 7px !important; }
+  .interval-card { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; break-inside: avoid; padding: 12px !important; }
+  .interval-num    { color: #64748b !important; }
+  .interval-name   { color: #0f172a !important; }
+  .interval-target { color: #94a3b8 !important; }
+  .interval-avg    { font-size: 20px !important; }
+  .progress-bar    { background: #e2e8f0 !important; }
+
+  /* Chart cards — 2-per-row, canvas colors preserved by print-color-adjust */
+  .charts-grid { grid-template-columns: 1fr 1fr !important; gap: 7px !important; }
+  .chart-card  { background: #f8fafc !important; border: 1px solid #e2e8f0 !important; break-inside: avoid; padding: 12px !important; page-break-inside: avoid; }
+  .chart-title { color: #0f172a !important; }
+  .chart-sub   { color: #64748b !important; }
+  .chart-wrap  { height: 180px !important; }
+
+  /* Heatmap */
+  .heatmap-label { color: #475569 !important; }
+  .heatmap-hour  { color: #475569 !important; }
+  .heatmap-cell:hover { color: transparent !important; }
+
+  /* Weakness */
+  .weakness-row  { background: #f1f5f9 !important; }
+  .weakness-name { color: #0f172a !important; }
+  .weakness-rank, .weakness-val { color: #64748b !important; }
+  .weakness-bar  { background: #e2e8f0 !important; }
+  .weakness-fill { background: #ef4444 !important; }
+
+  /* Table */
+  .table-wrap { border: 1px solid #cbd5e1 !important; }
+  th  { background: #f1f5f9 !important; color: #334155 !important; border-bottom: 1px solid #cbd5e1 !important; }
+  td  { color: #111 !important; border-bottom: 1px solid #f1f5f9 !important; }
+  tr:last-child td { border-bottom: none !important; }
+  tr:hover td { background: none !important; }
+  .td-over { color: #dc2626 !important; font-weight: 600 !important; }
+  .td-ok   { color: #059669 !important; }
+
+  /* Toast — never print */
+  .toast { display: none !important; }
 }
 </style>
 </head>
