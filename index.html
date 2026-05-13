@@ -237,6 +237,9 @@ body.printing .chart-wrap   { height: 180px !important; }
 body.printing canvas        { background: #fff !important; }
 body.printing .metric-card  { padding: 10px !important; break-inside: avoid; }
 body.printing .heatmap-cell:hover { color: transparent !important; }
+body.printing #heatmapGrid  { overflow: visible !important; }
+body.printing #heatmapGrid > div { font-size: 8px !important; }
+body.printing .hm-empty     { background: #e8edf4 !important; }
 body.printing .toast        { display: none !important; }
 
 /* @media print — page size / breaks (layout only, colors come from body.printing above) */
@@ -910,7 +913,8 @@ function renderHeatmap(d){
       const g=a?Math.round(68*(1-intensity)+180*intensity*(intensity<.5?1:0)):40;
       const b=a?Math.round(68*(1-intensity)):60;
       const bg=a?`rgb(${r},${g},${b})`:'rgba(255,255,255,.03)';
-      html+=`<div title="${a?Math.round(a)+' min avg ('+cell.length+' records)':'No data'}" style="aspect-ratio:1;border-radius:3px;background:${bg};cursor:default;"></div>`;
+      const cls=a?'':'hm-empty';
+      html+=`<div class="${cls}" title="${a?Math.round(a)+' min avg ('+cell.length+' records)':'No data'}" style="aspect-ratio:1;border-radius:3px;background:${bg};cursor:default;"></div>`;
     }
   });
   html+='</div>';
