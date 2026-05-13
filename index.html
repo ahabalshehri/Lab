@@ -191,6 +191,27 @@ tr:hover td { background: rgba(255,255,255,.02); }
   .header-actions .btn span { display: none; }
 }
 
+/* ── META BADGE (screen) ── */
+.meta-badge { display:flex; flex-direction:column; align-items:flex-end; gap:3px; padding:5px 12px; border:1px solid var(--border2); border-radius:var(--radius-sm); }
+.meta-period { display:flex; align-items:center; gap:5px; font-size:13px; font-weight:600; color:var(--text); font-family:var(--mono); white-space:nowrap; }
+.meta-loaded { font-size:10px; color:var(--muted); display:flex; align-items:center; gap:2px; white-space:nowrap; }
+
+/* ── PRINT STRIP (hidden on screen, shown in print) ── */
+#printStrip { display:none; }
+body.printing #printStrip {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 16px; margin-bottom:14px;
+  background:#f1f5f9; border-radius:8px;
+  border-left:4px solid #3b82f6;
+}
+.ps-left { display:flex; flex-direction:column; gap:2px; }
+.ps-title { font-size:14px; font-weight:700; color:#0f172a; }
+.ps-sub   { font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.08em; margin-top:1px; }
+.ps-right { display:flex; gap:24px; align-items:center; }
+.ps-block { display:flex; flex-direction:column; align-items:flex-end; gap:1px; }
+.ps-label { font-size:9px; color:#64748b; text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+.ps-val   { font-size:13px; font-weight:600; color:#0f172a; font-family:var(--mono); white-space:nowrap; }
+
 /* ── PRINT MODE (applied by JS before window.print — works without browser "Background graphics" setting) ── */
 body.printing {
   /* Flip CSS variables to light theme — every element using var(--bg/text/etc) updates automatically */
@@ -201,7 +222,7 @@ body.printing {
 }
 body.printing header  { position: static !important; height: auto !important; border-bottom: 2px solid #1e293b !important; }
 body.printing .header-actions .btn, body.printing .header-actions a { display: none !important; }
-body.printing #liveStatus button { display: none !important; }
+body.printing #metaBadge { display: none !important; }
 body.printing .badge-live span { animation: none !important; }
 body.printing .btn,
 body.printing #uploadSection,
@@ -217,7 +238,6 @@ body.printing canvas        { background: #fff !important; }
 body.printing .metric-card  { padding: 10px !important; break-inside: avoid; }
 body.printing .heatmap-cell:hover { color: transparent !important; }
 body.printing .toast        { display: none !important; }
-body.printing #dateRange    { display: flex !important; flex-direction: column; border-color: #cbd5e1 !important; font-size: 13px !important; padding: 4px 14px !important; }
 
 /* @media print — page size / breaks (layout only, colors come from body.printing above) */
 @media print {
@@ -240,10 +260,16 @@ body.printing #dateRange    { display: flex !important; flex-direction: column; 
   </div>
   <div class="header-actions">
     <a href="bloodbank.html" style="font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;border:1px solid var(--border2);border-radius:8px;margin-right:4px;transition:color .15s" onmouseover="this.style.color='#e8edf5'" onmouseout="this.style.color='#6b7a99'">🩸 Blood Bank</a>
-    <div class="badge-live" id="liveStatus" style="display:none"><span></span> <span id="liveStatusText">Data loaded</span><button onclick="clearCache()" style="background:none;border:none;color:inherit;opacity:.7;cursor:pointer;margin-left:8px;font-size:11px;padding:0;line-height:1" title="Clear saved data">× clear</button></div>
-    <div id="dateRange" style="display:none;font-size:12px;color:var(--muted);padding:4px 12px;border:1px solid var(--border2);border-radius:8px;white-space:nowrap;line-height:1.4">
-      <span style="font-size:10px;display:block;text-transform:uppercase;letter-spacing:.05em;opacity:.7">Period</span>
-      <span style="color:var(--text);font-weight:500"><span id="drFrom">--</span> &nbsp;→&nbsp; <span id="drTo">--</span></span>
+    <!-- Combined meta badge (screen) -->
+    <div id="metaBadge" style="display:none" class="meta-badge">
+      <div class="meta-period">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" style="opacity:.6"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span id="drFrom">--</span> <span style="opacity:.5">→</span> <span id="drTo">--</span>
+      </div>
+      <div class="meta-loaded">
+        Uploaded <span id="liveStatusText">--</span>
+        <button onclick="clearCache()" title="Clear saved data" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:0 0 0 6px;font-size:11px;line-height:1">× clear</button>
+      </div>
     </div>
     <button class="btn" onclick="doPrint()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -262,6 +288,28 @@ body.printing #dateRange    { display: flex !important; flex-direction: column; 
 </header>
 
 <div class="main">
+
+  <!-- PRINT-ONLY REPORT HEADER (hidden on screen) -->
+  <div id="printStrip">
+    <div class="ps-left">
+      <div class="ps-title">ER Laboratory TAT &mdash; Turnaround Time Report</div>
+      <div class="ps-sub">ADAA · Emergency Department</div>
+    </div>
+    <div class="ps-right">
+      <div class="ps-block">
+        <span class="ps-label">Period</span>
+        <span class="ps-val"><span id="psFrom">--</span> &nbsp;→&nbsp; <span id="psTo">--</span></span>
+      </div>
+      <div class="ps-block">
+        <span class="ps-label">Uploaded</span>
+        <span class="ps-val" id="psLoaded">--</span>
+      </div>
+      <div class="ps-block">
+        <span class="ps-label">Records</span>
+        <span class="ps-val" id="psTotal">--</span>
+      </div>
+    </div>
+  </div>
 
   <!-- UPLOAD -->
   <div id="uploadSection" class="section">
@@ -623,7 +671,7 @@ function loadSample(){
   populateTestFilter();
   showToast('✓ Sample data loaded — 120 records (ED filter active)');
   setBadgeDate();
-  show('liveStatus');
+  show('metaBadge');
   hide('uploadSection');
 }
 
@@ -642,7 +690,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
     const edCount = rawData.filter(r=>r.patientType==='ED').length;
     showToast(`✓ Loaded ${rawData.length} records — showing ${edCount} ED`);
     setBadgeDate();
-    show('liveStatus');
+    show('metaBadge');
     hide('uploadSection');
   };
   reader.readAsArrayBuffer(file);
@@ -709,7 +757,10 @@ function renderAll(){
     const fmt = x => `${String(x.getDate()).padStart(2,'0')}-${mo[x.getMonth()]}-${x.getFullYear()}`;
     document.getElementById('drFrom').textContent = fmt(minD);
     document.getElementById('drTo').textContent   = fmt(maxD);
+    document.getElementById('psFrom').textContent = fmt(minD);
+    document.getElementById('psTo').textContent   = fmt(maxD);
   }
+  document.getElementById('psTotal').textContent = total + ' records';
 
   const valid  = d.filter(r=>r.total!=null);
   const tatArr = valid.map(r=>r.total);
@@ -768,7 +819,7 @@ function showSections(on){
   ['filterSection','metricsSection','intervalSection','aiSection','chartsSection','heatmapSection','weaknessSection','tableSection']
     .forEach(id=>{ document.getElementById(id).style.display = on?'':'none'; });
   if(on) show('filterSection');
-  document.getElementById('dateRange').style.display = on ? '' : 'none';
+  document.getElementById('metaBadge').style.display = on ? '' : 'none';
 }
 
 /* ── CHARTS ── */
@@ -1004,7 +1055,9 @@ function _fmtD(d){ return `${String(d.getDate()).padStart(2,'0')}-${_mo[d.getMon
 
 function setBadgeDate(d){
   const dt = d || new Date();
-  document.getElementById('liveStatusText').textContent = `Loaded ${_fmtD(dt)}`;
+  const s = _fmtD(dt);
+  document.getElementById('liveStatusText').textContent = s;
+  document.getElementById('psLoaded').textContent = s;
 }
 
 function saveCache(){
@@ -1051,7 +1104,7 @@ function restoreCache(){
     }
     applyFilters();
     setBadgeDate(new Date(savedAt));
-    show('liveStatus');
+    show('metaBadge');
     hide('uploadSection');
     return true;
   } catch(e){
@@ -1066,7 +1119,7 @@ function clearCache(){
   rawData = []; filteredData = [];
   showSections(false);
   show('uploadSection');
-  hide('liveStatus');
+  hide('metaBadge');
   document.getElementById('exportBtn').disabled = true;
   showToast('Data cleared — upload a new file to begin');
 }
