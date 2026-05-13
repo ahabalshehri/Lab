@@ -217,6 +217,7 @@ body.printing canvas        { background: #fff !important; }
 body.printing .metric-card  { padding: 10px !important; break-inside: avoid; }
 body.printing .heatmap-cell:hover { color: transparent !important; }
 body.printing .toast        { display: none !important; }
+body.printing #dateRange    { display: flex !important; flex-direction: column; border-color: #cbd5e1 !important; font-size: 13px !important; padding: 4px 14px !important; }
 
 /* @media print — page size / breaks (layout only, colors come from body.printing above) */
 @media print {
@@ -240,6 +241,10 @@ body.printing .toast        { display: none !important; }
   <div class="header-actions">
     <a href="bloodbank.html" style="font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;border:1px solid var(--border2);border-radius:8px;margin-right:4px;transition:color .15s" onmouseover="this.style.color='#e8edf5'" onmouseout="this.style.color='#6b7a99'">🩸 Blood Bank</a>
     <div class="badge-live" id="liveStatus" style="display:none"><span></span> <span id="liveStatusText">Data loaded</span><button onclick="clearCache()" style="background:none;border:none;color:inherit;opacity:.7;cursor:pointer;margin-left:8px;font-size:11px;padding:0;line-height:1" title="Clear saved data">× clear</button></div>
+    <div id="dateRange" style="display:none;font-size:12px;color:var(--muted);padding:4px 12px;border:1px solid var(--border2);border-radius:8px;white-space:nowrap;line-height:1.4">
+      <span style="font-size:10px;display:block;text-transform:uppercase;letter-spacing:.05em;opacity:.7">Period</span>
+      <span style="color:var(--text);font-weight:500"><span id="drFrom">--</span> &nbsp;→&nbsp; <span id="drTo">--</span></span>
+    </div>
     <button class="btn" onclick="doPrint()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       <span>Print</span>
@@ -695,6 +700,17 @@ function renderAll(){
   if(!total){ showSections(false); return; }
   showSections(true);
 
+  // Date range from actual data
+  const orderDates = d.map(r=>r.tOrder).filter(Boolean);
+  if(orderDates.length){
+    const minD = new Date(Math.min(...orderDates.map(x=>x.getTime())));
+    const maxD = new Date(Math.max(...orderDates.map(x=>x.getTime())));
+    const mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const fmt = x => `${String(x.getDate()).padStart(2,'0')}-${mo[x.getMonth()]}-${x.getFullYear()}`;
+    document.getElementById('drFrom').textContent = fmt(minD);
+    document.getElementById('drTo').textContent   = fmt(maxD);
+  }
+
   const valid  = d.filter(r=>r.total!=null);
   const tatArr = valid.map(r=>r.total);
   const within = tatArr.filter(v=>v<=60).length;
@@ -752,6 +768,7 @@ function showSections(on){
   ['filterSection','metricsSection','intervalSection','aiSection','chartsSection','heatmapSection','weaknessSection','tableSection']
     .forEach(id=>{ document.getElementById(id).style.display = on?'':'none'; });
   if(on) show('filterSection');
+  document.getElementById('dateRange').style.display = on ? '' : 'none';
 }
 
 /* ── CHARTS ── */
