@@ -213,7 +213,7 @@ tr:hover td { background: rgba(255,255,255,.02); }
   </div>
   <div class="header-actions">
     <a href="bloodbank.html" style="font-size:13px;color:var(--muted);text-decoration:none;padding:6px 12px;border:1px solid var(--border2);border-radius:8px;margin-right:4px;transition:color .15s" onmouseover="this.style.color='#e8edf5'" onmouseout="this.style.color='#6b7a99'">🩸 Blood Bank</a>
-    <div class="badge-live" id="liveStatus" style="display:none"><span></span> Data loaded</div>
+    <div class="badge-live" id="liveStatus" style="display:none"><span></span> <span id="liveStatusText">Data loaded</span><button onclick="clearCache()" style="background:none;border:none;color:inherit;opacity:.7;cursor:pointer;margin-left:8px;font-size:11px;padding:0;line-height:1" title="Clear saved data">× clear</button></div>
     <button class="btn" onclick="window.print()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       <span>Print</span>
@@ -591,6 +591,7 @@ function loadSample(){
   applyFilters();
   populateTestFilter();
   showToast('✓ Sample data loaded — 120 records (ED filter active)');
+  setBadgeDate();
   show('liveStatus');
   hide('uploadSection');
 }
@@ -609,6 +610,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
     applyFilters();
     const edCount = rawData.filter(r=>r.patientType==='ED').length;
     showToast(`✓ Loaded ${rawData.length} records — showing ${edCount} ED`);
+    setBadgeDate();
     show('liveStatus');
     hide('uploadSection');
   };
@@ -649,6 +651,7 @@ function applyFilters(){
     return true;
   });
   renderAll();
+  saveCache();
 }
 
 function resetFilters(){
@@ -950,6 +953,83 @@ function ruleBasedInterpretation(stats, worstTests) {
 
   return [p1, p2, p3];
 }
+
+/* ── CACHE ── */
+const ERTAT_KEY = 'ertatCache';
+const _mo = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function _fmtD(d){ return `${String(d.getDate()).padStart(2,'0')}-${_mo[d.getMonth()]}-${d.getFullYear()}`; }
+
+function setBadgeDate(d){
+  const dt = d || new Date();
+  document.getElementById('liveStatusText').textContent = `Loaded ${_fmtD(dt)}`;
+}
+
+function saveCache(){
+  if(!rawData.length) return;
+  try {
+    const serial = rawData.map(r=>({
+      ...r,
+      tOrder:   r.tOrder   ? r.tOrder.toISOString()   : null,
+      tCollect: r.tCollect ? r.tCollect.toISOString() : null,
+      tReceive: r.tReceive ? r.tReceive.toISOString() : null,
+      tVerify:  r.tVerify  ? r.tVerify.toISOString()  : null,
+    }));
+    const filters = {
+      from:        document.getElementById('filterFrom').value,
+      to:          document.getElementById('filterTo').value,
+      test:        document.getElementById('filterTest').value,
+      sla:         document.getElementById('filterSLA').value,
+      patientType: document.getElementById('filterPatientType').value,
+    };
+    localStorage.setItem(ERTAT_KEY, JSON.stringify({ rows: serial, filters, savedAt: new Date().toISOString() }));
+  } catch(e){ console.warn('Cache save failed', e); }
+}
+
+function restoreCache(){
+  try {
+    const raw = localStorage.getItem(ERTAT_KEY);
+    if(!raw) return false;
+    const { rows, filters, savedAt } = JSON.parse(raw);
+    if(!rows || !rows.length) return false;
+    rawData = rows.map(r=>({
+      ...r,
+      tOrder:   r.tOrder   ? new Date(r.tOrder)   : null,
+      tCollect: r.tCollect ? new Date(r.tCollect) : null,
+      tReceive: r.tReceive ? new Date(r.tReceive) : null,
+      tVerify:  r.tVerify  ? new Date(r.tVerify)  : null,
+    }));
+    populateTestFilter();
+    if(filters){
+      document.getElementById('filterFrom').value        = filters.from        || '';
+      document.getElementById('filterTo').value          = filters.to          || '';
+      document.getElementById('filterTest').value        = filters.test        || '';
+      document.getElementById('filterSLA').value         = filters.sla         || '';
+      document.getElementById('filterPatientType').value = filters.patientType || 'ED';
+    }
+    applyFilters();
+    setBadgeDate(new Date(savedAt));
+    show('liveStatus');
+    hide('uploadSection');
+    return true;
+  } catch(e){
+    console.warn('Cache restore failed', e);
+    localStorage.removeItem(ERTAT_KEY);
+    return false;
+  }
+}
+
+function clearCache(){
+  localStorage.removeItem(ERTAT_KEY);
+  rawData = []; filteredData = [];
+  showSections(false);
+  show('uploadSection');
+  hide('liveStatus');
+  document.getElementById('exportBtn').disabled = true;
+  showToast('Data cleared — upload a new file to begin');
+}
+
+// Auto-restore on load
+restoreCache();
 
 /* ── EXPORT CSV ── */
 function exportCSV(){
