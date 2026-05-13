@@ -273,6 +273,9 @@ tr:hover td { background: rgba(255,255,255,.02); }
   .td-over { color: #dc2626 !important; font-weight: 600 !important; }
   .td-ok   { color: #059669 !important; }
 
+  /* Canvas — white background so chart elements show on paper */
+  canvas { background: #fff !important; }
+
   /* Toast — never print */
   .toast { display: none !important; }
 }
@@ -1107,6 +1110,29 @@ function clearCache(){
 
 // Auto-restore on load
 restoreCache();
+
+/* ── PRINT CHART THEME ── */
+function setPrintChartTheme(forPrint) {
+  const tick = forPrint ? '#374151' : '#6b7a99';
+  const grid = forPrint ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,.05)';
+  const legend = forPrint ? '#111' : '#e8edf5';
+  Object.values(charts).forEach(chart => {
+    Object.values(chart.options.scales || {}).forEach(scale => {
+      if (scale.ticks) scale.ticks.color = tick;
+      if (scale.grid)  scale.grid.color  = grid;
+    });
+    const lb = chart.options.plugins?.legend?.labels;
+    if (lb) lb.color = legend;
+    // Annotation / reference lines
+    const ann = chart.options.plugins?.annotation?.annotations;
+    if (ann) Object.values(ann).forEach(a => {
+      if (a.borderColor) a.borderColor = forPrint ? '#dc2626' : a._origColor || a.borderColor;
+    });
+    chart.update('none');
+  });
+}
+window.addEventListener('beforeprint', () => setPrintChartTheme(true));
+window.addEventListener('afterprint',  () => setPrintChartTheme(false));
 
 /* ── EXPORT CSV ── */
 function exportCSV(){
