@@ -110,13 +110,16 @@ select:focus, input:focus { border-color: var(--accent); }
 .mc-badge.ok { background: rgba(16,185,129,.15); color: var(--green); }
 .mc-badge.warn { background: rgba(245,158,11,.15); color: var(--amber); }
 .mc-badge.bad { background: rgba(239,68,68,.15); color: var(--red); }
-.mc-icon { position: absolute; top: 14px; right: 14px; opacity: .13; transition: opacity .2s; pointer-events: none; }
-.metric-card:hover .mc-icon { opacity: .28; }
-.metric-card.info   .mc-icon { color: var(--accent); opacity: .2; }
-.metric-card.ok     .mc-icon { color: var(--green);  opacity: .2; }
-.metric-card.warn   .mc-icon { color: var(--amber);  opacity: .2; }
-.metric-card.bad    .mc-icon { color: var(--red);    opacity: .2; }
-.metric-card.purple .mc-icon { color: var(--purple); opacity: .2; }
+.mc-icon { position: absolute; bottom: 12px; right: 14px; opacity: .28; transition: opacity .2s; pointer-events: none; }
+.metric-card:hover .mc-icon { opacity: .55; }
+.metric-card.info   .mc-icon { color: var(--accent); }
+.metric-card.ok     .mc-icon { color: var(--green);  }
+.metric-card.warn   .mc-icon { color: var(--amber);  }
+.metric-card.bad    .mc-icon { color: var(--red);    }
+.metric-card.purple .mc-icon { color: var(--purple); }
+.ic-icon { position: absolute; bottom: 18px; right: 16px; opacity: .25; transition: opacity .2s; pointer-events: none; color: var(--accent2); }
+.interval-card { position: relative; }
+.interval-card:hover .ic-icon { opacity: .5; }
 
 /* ── INTERVAL CARDS ── */
 .intervals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -391,49 +394,49 @@ body.printing .toast        { display: none !important; }
     <div class="section-title">Key metrics</div>
     <div class="metrics-grid">
       <div class="metric-card info">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         <div class="mc-label">Total records</div>
         <div class="mc-value" id="m-total">0</div>
         <div class="mc-sub">After filters</div>
       </div>
       <div class="metric-card" id="mc-sla">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
         <div class="mc-label">Within SLA (≤60 min)</div>
         <div class="mc-value" id="m-sla">--%</div>
         <div class="mc-sub">Doctor order → result sent to requester</div>
       </div>
       <div class="metric-card" id="mc-avg">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         <div class="mc-label">Average TAT</div>
         <div class="mc-value" id="m-avg">-- min</div>
         <div class="mc-sub">Mean turnaround</div>
       </div>
       <div class="metric-card" id="mc-med">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>
         <div class="mc-label">Median TAT</div>
         <div class="mc-value" id="m-med">-- min</div>
         <div class="mc-sub">Typical performance</div>
       </div>
       <div class="metric-card warn">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
         <div class="mc-label">P90 TAT</div>
         <div class="mc-value" id="m-p90">-- min</div>
         <div class="mc-sub">Tail delay pressure</div>
       </div>
       <div class="metric-card" id="mc-over">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div class="mc-label">Over 60 min</div>
         <div class="mc-value" id="m-over">0</div>
         <div class="mc-sub">Delayed records</div>
       </div>
       <div class="metric-card purple">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div class="mc-label">Missing timestamps</div>
         <div class="mc-value" id="m-missing">0</div>
         <div class="mc-sub">Data quality risk</div>
       </div>
       <div class="metric-card" id="mc-worst">
-        <svg class="mc-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        <svg class="mc-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
         <div class="mc-label">Worst interval</div>
         <div class="mc-value" id="m-worst">--</div>
         <div class="mc-sub">Largest avg delay</div>
@@ -446,6 +449,7 @@ body.printing .toast        { display: none !important; }
     <div class="section-title">Interval performance</div>
     <div class="intervals-grid">
       <div class="interval-card">
+        <svg class="ic-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         <div class="interval-num">Step 1</div>
         <div class="interval-name">Doctor Order → Sample Collection</div>
         <div class="interval-target">Target ≤ 10 min</div>
@@ -456,6 +460,7 @@ body.printing .toast        { display: none !important; }
         <div class="progress-bar"><div class="progress-fill" id="i1-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
       <div class="interval-card">
+        <svg class="ic-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
         <div class="interval-num">Step 2</div>
         <div class="interval-name">Sample Collection → Lab Received</div>
         <div class="interval-target">Target ≤ 10 min</div>
@@ -466,6 +471,7 @@ body.printing .toast        { display: none !important; }
         <div class="progress-bar"><div class="progress-fill" id="i2-bar" style="width:0%;background:var(--green)"></div></div>
       </div>
       <div class="interval-card">
+        <svg class="ic-icon" width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
         <div class="interval-num">Step 3</div>
         <div class="interval-name">Lab Received → Result Sent to Requester</div>
         <div class="interval-target">Target ≤ 35 min</div>
