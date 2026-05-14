@@ -38,12 +38,16 @@ header {
   border-bottom: 1px solid var(--border);
   padding: 0 24px;
   display: flex; align-items: center; justify-content: space-between;
-  height: 60px; position: sticky; top: 0; z-index: 100;
+  height: 72px; position: sticky; top: 0; z-index: 100;
 }
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-.logo-text { font-size: 15px; font-weight: 600; color: var(--text); }
-.logo-sub { font-size: 11px; color: var(--muted); }
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-img { width: 48px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.logo-divider { width: 1px; height: 36px; background: var(--border2); margin: 0 4px; }
+.logo-hospital { display: flex; flex-direction: column; gap: 1px; }
+.logo-hospital-name { font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: .01em; }
+.logo-hospital-dept { font-size: 11px; color: var(--accent); font-weight: 500; }
+.logo-text { font-size: 13px; font-weight: 600; color: var(--muted); }
+.logo-sub { font-size: 10px; color: var(--muted); opacity: .7; }
 .header-actions { display: flex; gap: 8px; align-items: center; }
 .badge-live { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--green); background: rgba(16,185,129,0.1); padding: 4px 10px; border-radius: 20px; border: 1px solid rgba(16,185,129,0.2); }
 .badge-live span { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
@@ -269,7 +273,13 @@ body.printing .toast        { display: none !important; }
 
 <header>
   <div class="logo">
-    <div class="logo-icon">🧪</div>
+    <img class="logo-img" src="logo.png" alt="Hospital Logo">
+    <div class="logo-divider"></div>
+    <div class="logo-hospital">
+      <div class="logo-hospital-name">Al-Majardah General Hospital</div>
+      <div class="logo-hospital-dept">Laboratory &amp; Blood Bank Department</div>
+    </div>
+    <div class="logo-divider"></div>
     <div>
       <div class="logo-text">ER Laboratory TAT</div>
       <div class="logo-sub">Turnaround Time Dashboard</div>
