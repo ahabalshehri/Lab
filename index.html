@@ -636,12 +636,12 @@ function detectCol(headers, patterns){
 function parseRows(ws){
   const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
   if(!json.length) return [];
-  const headers = json[0].map(h=>String(h).trim());
+  const headers = json[0].map(h=>String(h).replace(/\s+/g,' ').trim());
 
-  const iOrder       = detectCol(headers,[/doctor.*order/,/order.*time/,/ord.*time/,/physician.*order/,/order.*date/,/request.*time/,/request.*date/,/ordered/,/order/,/request/,/طلب/,/أمر.*طبيب/,/وقت.*طلب/,/تاريخ.*طلب/]);
-  const iCollect     = detectCol(headers,[/collect.*time/,/sample.*collect/,/collect.*date/,/draw.*time/,/specimen.*collect/,/phlebotomy/,/collec/,/draw/,/specimen.*time/,/sample.*time/,/سحب/,/عينة/,/وقت.*جمع/,/وقت.*سحب/]);
-  const iReceive     = detectCol(headers,[/lab.*receiv/,/receiv.*lab/,/receiv.*time/,/receiv.*date/,/lab.*arriv/,/arriv.*lab/,/receiv/,/arrival/,/وقت.*استلام/,/استلام.*مختبر/,/استلام/]);
-  const iVerify      = detectCol(headers,[/sent.*requester/,/result.*sent/,/verif.*time/,/verif.*date/,/result.*time/,/result.*date/,/report.*time/,/released/,/dispatch/,/release.*time/,/authoriz/,/complete.*time/,/verif/,/release/,/report/,/complete/,/نتيجة/,/إرسال/,/وقت.*نتيجة/,/تحقق/]);
+  const iOrder       = detectCol(headers,[/date.*time.*doctor/,/doctor.*order/,/order.*time/,/ord.*time/,/physician.*order/,/order.*date/,/request.*time/,/request.*date/,/ordered/,/order/,/request/,/طلب/,/أمر.*طبيب/,/وقت.*طلب/,/تاريخ.*طلب/]);
+  const iCollect     = detectCol(headers,[/date.*time.*sample.*collect/,/date.*time.*collect/,/collect.*time/,/sample.*collect/,/collect.*date/,/draw.*time/,/specimen.*collect/,/phlebotomy/,/collec/,/draw/,/specimen.*time/,/sample.*time/,/سحب/,/عينة/,/وقت.*جمع/,/وقت.*سحب/]);
+  const iReceive     = detectCol(headers,[/date.*time.*arrival/,/arrival.*lab/,/arriv.*lab/,/lab.*receiv/,/receiv.*lab/,/receiv.*time/,/receiv.*date/,/lab.*arriv/,/receiv/,/arrival/,/وقت.*استلام/,/استلام.*مختبر/,/استلام/]);
+  const iVerify      = detectCol(headers,[/result.*sent.*back/,/result.*sent/,/sent.*back.*requ/,/sent.*requester/,/verif.*time/,/verif.*date/,/result.*time/,/result.*date/,/report.*time/,/released/,/dispatch/,/release.*time/,/authoriz/,/complete.*time/,/verif/,/release/,/report/,/complete/,/نتيجة/,/إرسال/,/وقت.*نتيجة/,/تحقق/]);
   const iTest        = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/]);
   const iID          = detectCol(headers,[/patient.*id/,/mrn/,/visit/,/encounter/,/id/,/accession/]);
   const iPatientType = detectCol(headers,[/patient.*type/,/patient.*class/,/pt.*type/,/visit.*type/,/care.*type/,/encounter.*type/,/admission.*type/,/patient.*category/,/نوع.*مريض/,/تصنيف.*مريض/]);
@@ -724,7 +724,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
     rawData = parseRows(ws);
     if(!rawData.length){
       const hRow = XLSX.utils.sheet_to_json(ws,{header:1,defval:''})[0]||[];
-      const found = hRow.map(h=>String(h).trim()).filter(Boolean);
+      const found = hRow.map(h=>String(h).replace(/\s+/g,' ').trim()).filter(Boolean);
       const errEl = document.getElementById('uploadError');
       if(!found.length){
         errEl.innerHTML = '<strong>File appears empty</strong> — no header row detected.';
