@@ -633,21 +633,38 @@ function detectCol(headers, patterns){
 }
 
 /* ── PARSE EXCEL ── */
+const ORDER_PAT   = [/date.*time.*doctor/,/doctor.*order/,/order.*time/,/ord.*time/,/physician.*order/,/order.*date/,/request.*time/,/request.*date/,/ordered/,/order/,/request/,/طلب/,/أمر.*طبيب/,/وقت.*طلب/,/تاريخ.*طلب/];
+const COLLECT_PAT = [/date.*time.*sample.*collect/,/date.*time.*collect/,/collect.*time/,/sample.*collect/,/collect.*date/,/draw.*time/,/specimen.*collect/,/phlebotomy/,/collec/,/draw/,/specimen.*time/,/sample.*time/,/سحب/,/عينة/,/وقت.*جمع/,/وقت.*سحب/];
+const RECEIVE_PAT = [/date.*time.*arrival/,/arrival.*lab/,/arriv.*lab/,/lab.*receiv/,/receiv.*lab/,/receiv.*time/,/receiv.*date/,/lab.*arriv/,/receiv/,/arrival/,/وقت.*استلام/,/استلام.*مختبر/,/استلام/];
+const VERIFY_PAT  = [/result.*sent.*back/,/result.*sent/,/sent.*back.*requ/,/sent.*requester/,/verif.*time/,/verif.*date/,/result.*time/,/result.*date/,/report.*time/,/released/,/dispatch/,/release.*time/,/authoriz/,/complete.*time/,/verif/,/release/,/report/,/complete/,/نتيجة/,/إرسال/,/وقت.*نتيجة/,/تحقق/];
+
+function findHeaderRow(json){
+  // Score each of the first 15 rows by how many of the 4 key columns match
+  for(let i=0;i<Math.min(15,json.length);i++){
+    const h = json[i].map(c=>String(c).replace(/\s+/g,' ').trim());
+    const score = [ORDER_PAT,COLLECT_PAT,RECEIVE_PAT,VERIFY_PAT]
+      .filter(pats=>detectCol(h,pats)>=0).length;
+    if(score>=2) return i; // found a row that matches at least 2 of 4
+  }
+  return 0; // fall back to first row
+}
+
 function parseRows(ws){
   const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
   if(!json.length) return [];
-  const headers = json[0].map(h=>String(h).replace(/\s+/g,' ').trim());
+  const headerRowIdx = findHeaderRow(json);
+  const headers = json[headerRowIdx].map(h=>String(h).replace(/\s+/g,' ').trim());
 
-  const iOrder       = detectCol(headers,[/date.*time.*doctor/,/doctor.*order/,/order.*time/,/ord.*time/,/physician.*order/,/order.*date/,/request.*time/,/request.*date/,/ordered/,/order/,/request/,/طلب/,/أمر.*طبيب/,/وقت.*طلب/,/تاريخ.*طلب/]);
-  const iCollect     = detectCol(headers,[/date.*time.*sample.*collect/,/date.*time.*collect/,/collect.*time/,/sample.*collect/,/collect.*date/,/draw.*time/,/specimen.*collect/,/phlebotomy/,/collec/,/draw/,/specimen.*time/,/sample.*time/,/سحب/,/عينة/,/وقت.*جمع/,/وقت.*سحب/]);
-  const iReceive     = detectCol(headers,[/date.*time.*arrival/,/arrival.*lab/,/arriv.*lab/,/lab.*receiv/,/receiv.*lab/,/receiv.*time/,/receiv.*date/,/lab.*arriv/,/receiv/,/arrival/,/وقت.*استلام/,/استلام.*مختبر/,/استلام/]);
-  const iVerify      = detectCol(headers,[/result.*sent.*back/,/result.*sent/,/sent.*back.*requ/,/sent.*requester/,/verif.*time/,/verif.*date/,/result.*time/,/result.*date/,/report.*time/,/released/,/dispatch/,/release.*time/,/authoriz/,/complete.*time/,/verif/,/release/,/report/,/complete/,/نتيجة/,/إرسال/,/وقت.*نتيجة/,/تحقق/]);
-  const iTest        = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/]);
+  const iOrder       = detectCol(headers,ORDER_PAT);
+  const iCollect     = detectCol(headers,COLLECT_PAT);
+  const iReceive     = detectCol(headers,RECEIVE_PAT);
+  const iVerify      = detectCol(headers,VERIFY_PAT);
+  const iTest        = detectCol(headers,[/test/,/panel/,/exam/,/analyt/,/order.*name/,/result.*name/,/section/]);
   const iID          = detectCol(headers,[/patient.*id/,/mrn/,/visit/,/encounter/,/id/,/accession/]);
   const iPatientType = detectCol(headers,[/patient.*type/,/patient.*class/,/pt.*type/,/visit.*type/,/care.*type/,/encounter.*type/,/admission.*type/,/patient.*category/,/نوع.*مريض/,/تصنيف.*مريض/]);
 
   const rows = [];
-  for(let i=1;i<json.length;i++){
+  for(let i=headerRowIdx+1;i<json.length;i++){
     const r = json[i];
     const tOrder   = parseDate(iOrder>=0?r[iOrder]:null);
     const tCollect = parseDate(iCollect>=0?r[iCollect]:null);
@@ -736,10 +753,11 @@ document.getElementById('fileInput').addEventListener('change', function(e){
           ['Result sent / verified',/verif|sent.*requester|result.*sent|result.*time|report.*time|release|نتيجة|إرسال/i]
         ];
         const missing = needed.filter(([,rx])=>!found.some(h=>rx.test(h))).map(([n])=>n);
+        const rawHeaders = hRow.map(h=>JSON.stringify(String(h)));
         errEl.innerHTML =
           `<strong>Column mismatch</strong> — could not match all 4 required columns.<br><br>` +
           (missing.length ? `<span style="color:#fca5a5">Not matched: ${missing.join(', ')}</span><br><br>` : '') +
-          `<span style="color:#94a3b8">Columns in your file:</span><br>${found.map(h=>`<code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:11px">${h}</code>`).join(' ')}`;
+          `<span style="color:#94a3b8">Columns in your file (raw):</span><br>${rawHeaders.map(h=>`<code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;font-size:11px;word-break:break-all">${h}</code>`).join(' ')}`;
       }
       errEl.style.display='';
       showToast('⚠ Column names not recognised — see details below');
